@@ -44,7 +44,7 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const peso=n=>"₱"+Number(n||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
 const num=n=>Number(n||0).toLocaleString("en-PH");
-let sb,me=null,prof=null,rows=[],eds=[],people=[],year=new Date().getFullYear(),mf=0,mt=11,page="dash",scr="login",okmsg="",toast="",recovery=false;
+let sb,me=null,prof=null,rows=[],eds=[],people=[],year=new Date().getFullYear(),mf=0,mt=11,page="dash",scr="login",admErr="",okmsg="",toast="",recovery=false;
 const BADGE='<span style="font-size:12px;background:var(--pr);color:var(--prt);padding:3px 8px;border-radius:6px;vertical-align:middle;margin-left:4px;letter-spacing:1px">OUTPUT</span>';
 const I='style="width:100%;margin-bottom:10px"';
 async function boot(){
@@ -85,12 +85,13 @@ function render(){
  if(!prof){$("#app").innerHTML='<div class="card" style="max-width:380px;margin:8vh auto 0"><h1>Account not available</h1><p>Your account was removed or is not ready.</p><button style="width:100%" onclick="logout()">Log out</button></div>';return}
  dash();
 }
-function go(s){scr=s;render()}
+function go(s){scr=s;admErr="";render()}
 function authScr(){
  const t='<h1>YAKAP Claim System '+BADGE+'</h1><div style="height:14px"></div>';let f;
  if(scr=="reg")f=t+`<label>Full name</label><input id="rn" ${I}><label>Gmail</label><input id="ru" type="email" placeholder="name@gmail.com" ${I}><label>Password (6+ characters)</label><input id="rp" type="password" ${I}><label>Confirm password</label><input id="rq" type="password" ${I}><div class="err" id="er"></div><button style="width:100%" onclick="doReg()">Create account</button><button class="g" style="width:100%;margin-top:8px" onclick="go('login')">Back to log in</button>`;
  else if(scr=="forgot")f=t+`<p style="margin:0 0 10px;color:var(--mut)">Enter your Gmail. We will email you a link to set a new password.</p><label>Gmail</label><input id="fe" type="email" placeholder="name@gmail.com" ${I}><div class="err" id="er"></div><button style="width:100%" onclick="doForgot()">Send reset link</button><button class="g" style="width:100%;margin-top:8px" onclick="go('login')">Back to log in</button>`;
- else{f=t+`<label>Gmail</label><input id="lu" type="email" ${I} autocomplete="username"><label>Password</label><input id="lp" type="password" style="width:100%;margin-bottom:6px" autocomplete="current-password"><div id="ok" style="color:#4ade80;font-weight:600">${esc(okmsg)}</div><div style="text-align:right;margin:0 0 6px"><a href="#" onclick="go('forgot');return false" style="color:var(--pr);font-size:13px">Forgot password?</a></div><div class="err" id="er"></div><button style="width:100%" onclick="doLogin()">Log in</button>`;okmsg=""}
+ else if(scr=="adm")f=t+`<label>Administrator Gmail</label><input id="lu" type="email" placeholder="name@gmail.com" ${I} autocomplete="username"><label>Administrator password</label><input id="lp" type="password" style="width:100%;margin-bottom:6px" autocomplete="current-password"><div class="err" id="er">${esc(admErr)}</div><button style="width:100%" onclick="doAdmin()">Log in as administrator</button><button class="g" style="width:100%;margin-top:8px" onclick="go('login')">Back to log in</button>`;
+ else{f=t+`<label>Gmail</label><input id="lu" type="email" ${I} autocomplete="username"><label>Password</label><input id="lp" type="password" style="width:100%;margin-bottom:6px" autocomplete="current-password"><div id="ok" style="color:#4ade80;font-weight:600">${esc(okmsg)}</div><div style="text-align:right;margin:0 0 6px"><a href="#" onclick="go('forgot');return false" style="color:var(--pr);font-size:13px">Forgot password?</a></div><div class="err" id="er"></div><button style="width:100%" onclick="doLogin()">Log in</button><button class="g" style="width:100%;margin-top:8px" onclick="go('adm')">Administrator login</button>`;okmsg=""}
  $("#app").innerHTML='<div class="card" style="max-width:380px;margin:8vh auto 0">'+f+'</div>';
 }
 function recoveryScr(){
@@ -103,6 +104,15 @@ async function doLogin(){
  const {data,error}=await sb.auth.signInWithPassword({email:em,password:pw});
  if(error){er.textContent=/confirm/i.test(error.message)?"Please confirm your email first (check your inbox).":"Wrong email or password.";return}
  me=data.user;await loadAll();toast="✓ Successfully logged in. Welcome, "+(prof?prof.name:"")+"!";render();
+}
+async function doAdmin(){
+ admErr="";const em=$("#lu").value.trim().toLowerCase(),pw=$("#lp").value,er=$("#er");
+ if(!em||!pw){er.textContent="Enter the administrator Gmail and password.";return}
+ const {data,error}=await sb.auth.signInWithPassword({email:em,password:pw});
+ if(error){er.textContent="Wrong email or password.";return}
+ me=data.user;await loadAll();
+ if(!prof||prof.role!="admin"){await sb.auth.signOut();me=null;prof=null;admErr="This account is not an administrator.";scr="adm";render();return}
+ toast="✓ Successfully logged in as administrator. Welcome, "+prof.name+"!";render();
 }
 async function doReg(){
  const n=$("#rn").value.trim(),em=$("#ru").value.trim().toLowerCase(),p=$("#rp").value,q=$("#rq").value,er=$("#er");
