@@ -11,6 +11,7 @@ create table if not exists public.profiles (
   role text not null default 'personnel' check (role in ('admin','personnel')),
   created_at timestamptz default now()
 );
+alter table public.profiles add column if not exists admin_request boolean default false;
 
 create table if not exists public.claims (
   id bigint generated always as identity primary key,
@@ -49,9 +50,10 @@ $$;
 create or replace function public.handle_new_user() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
-  insert into public.profiles(id, email, name, role)
+  insert into public.profiles(id, email, name, role, admin_request)
   values (new.id, new.email, coalesce(new.raw_user_meta_data->>'name', new.email),
-    case when exists(select 1 from public.profiles where role = 'admin') then 'personnel' else 'admin' end);
+    case when exists(select 1 from public.profiles where role = 'admin') then 'personnel' else 'admin' end,
+    coalesce((new.raw_user_meta_data->>'want_admin')::boolean, false));
   return new;
 end $$;
 
