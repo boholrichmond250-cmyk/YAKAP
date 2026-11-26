@@ -87,10 +87,11 @@ function render(){
 }
 function go(s){scr=s;admErr="";render()}
 function authScr(){
- const t='<h1>YAKAP Claim System '+BADGE+'</h1><div style="height:14px"></div>';let f;
+ const t='<h1>YAKAP Claim System '+BADGE+'</h1><div style="height:14px"></div>',ta=t.replace("OUTPUT","ADMIN");let f;
  if(scr=="reg")f=t+`<label>Full name</label><input id="rn" ${I}><label>Gmail</label><input id="ru" type="email" placeholder="name@gmail.com" ${I}><label>Password (6+ characters)</label><input id="rp" type="password" ${I}><label>Confirm password</label><input id="rq" type="password" ${I}><div class="err" id="er"></div><button style="width:100%" onclick="doReg()">Create account</button><button class="g" style="width:100%;margin-top:8px" onclick="go('login')">Back to log in</button>`;
  else if(scr=="forgot")f=t+`<p style="margin:0 0 10px;color:var(--mut)">Enter your Gmail. We will email you a link to set a new password.</p><label>Gmail</label><input id="fe" type="email" placeholder="name@gmail.com" ${I}><div class="err" id="er"></div><button style="width:100%" onclick="doForgot()">Send reset link</button><button class="g" style="width:100%;margin-top:8px" onclick="go('login')">Back to log in</button>`;
- else if(scr=="adm")f=t+`<label>Administrator Gmail</label><input id="lu" type="email" placeholder="name@gmail.com" ${I} autocomplete="username"><label>Administrator password</label><input id="lp" type="password" style="width:100%;margin-bottom:6px" autocomplete="current-password"><div class="err" id="er">${esc(admErr)}</div><button style="width:100%" onclick="doAdmin()">Log in as administrator</button><button class="g" style="width:100%;margin-top:8px" onclick="go('login')">Back to log in</button>`;
+ else if(scr=="areg")f=ta+`<label>Full name</label><input id="rn" ${I}><label>Gmail</label><input id="ru" type="email" placeholder="name@gmail.com" ${I}><label>Password (6+ characters)</label><input id="rp" type="password" ${I}><label>Confirm password</label><input id="rq" type="password" ${I}><div class="err" id="er"></div><button style="width:100%" onclick="doAdminReg()">Create administrator account</button><button class="g" style="width:100%;margin-top:8px" onclick="go('adm')">Back</button>`;
+ else if(scr=="adm")f=ta+`<label>Gmail</label><input id="lu" type="email" placeholder="name@gmail.com" ${I} autocomplete="username"><label>Administrator password</label><input id="lp" type="password" style="width:100%;margin-bottom:6px" autocomplete="current-password"><div class="err" id="er">${esc(admErr)}</div><button style="width:100%" onclick="doAdmin()">Log in as administrator</button><button class="g" style="width:100%;margin-top:8px" onclick="go('areg')">Create administrator account</button><button class="g" style="width:100%;margin-top:8px" onclick="go('login')">Back to log in</button>`;
  else{f=t+`<label>Gmail</label><input id="lu" type="email" ${I} autocomplete="username"><label>Password</label><input id="lp" type="password" style="width:100%;margin-bottom:6px" autocomplete="current-password"><div id="ok" style="color:#4ade80;font-weight:600">${esc(okmsg)}</div><div style="text-align:right;margin:0 0 6px"><a href="#" onclick="go('forgot');return false" style="color:var(--pr);font-size:13px">Forgot password?</a></div><div class="err" id="er"></div><button style="width:100%" onclick="doLogin()">Log in</button><button class="g" style="width:100%;margin-top:8px" onclick="go('adm')">Administrator login</button>`;okmsg=""}
  $("#app").innerHTML='<div class="card" style="max-width:380px;margin:8vh auto 0">'+f+'</div>';
 }
@@ -113,6 +114,18 @@ async function doAdmin(){
  me=data.user;await loadAll();
  if(!prof||prof.role!="admin"){await sb.auth.signOut();me=null;prof=null;admErr="This account is not an administrator.";scr="adm";render();return}
  toast="✓ Successfully logged in as administrator. Welcome, "+prof.name+"!";render();
+}
+async function doAdminReg(){
+ const n=$("#rn").value.trim(),em=$("#ru").value.trim().toLowerCase(),p=$("#rp").value,q=$("#rq").value,er=$("#er");
+ if(!n||!em||!p){er.textContent="Fill all fields.";return}
+ if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){er.textContent="Enter a valid email, e.g. name@gmail.com";return}
+ if(p.length<6){er.textContent="Password must be 6+ characters.";return}
+ if(p!==q){er.textContent="Passwords do not match.";return}
+ const {data,error}=await sb.auth.signUp({email:em,password:p,options:{data:{name:n,want_admin:true}}});
+ if(error){er.textContent=error.message;return}
+ if(data.session){me=data.user;await loadAll();
+  toast=prof&&prof.role=="admin"?"✓ Administrator account created successfully. You are now logged in.":"✓ Account created. The administrator must approve you as an administrator. Until then you can view only.";render()}
+ else{scr="adm";admErr="";okmsg="✓ Account created. Check your email to confirm it, then log in.";render()}
 }
 async function doReg(){
  const n=$("#rn").value.trim(),em=$("#ru").value.trim().toLowerCase(),p=$("#rp").value,q=$("#rq").value,er=$("#er");
@@ -177,7 +190,7 @@ function dash(){
  <div class="sc"><table><thead><tr><th>Month</th><th>Registered</th><th>Transmitted</th><th>Returned</th><th>Net amount</th>${adm?"<th></th>":""}</tr></thead><tbody>
  ${R.length?R.slice().sort((a,b)=>a.month-b.month).map(r=>`<tr><td>${lbl(r)}</td><td>${num(r.registered)}</td><td>${num(r.transmitted)}</td><td>${num(r.returned)}</td><td>${peso(r.net)}</td>${adm?`<td><button class="d" onclick="delRec(${r.id})">Delete</button></td>`:""}</tr>`).join(""):`<tr><td colspan="6" style="text-align:center;color:var(--mut)">No entries.</td></tr>`}
  </tbody><tfoot><tr><td>Total</td><td>${num(T.reg)}</td><td>${num(T.tx)}</td><td>${num(T.ret)}</td><td>${peso(T.net)}</td>${adm?"<td></td>":""}</tr></tfoot></table></div></div>
- ${adm?`<div class="card pg-p"><h2>Administrator Profile — Accounts</h2><p style="color:var(--mut);margin:0 0 8px">The first account created is the administrator. Change roles here.</p><div style="margin-bottom:12px"><b>Share links</b><label style="margin-top:6px">Personnel sign-up link (send to personnel)</label><input readonly onclick="this.select()" style="width:100%" value="${esc(shareLink("signup"))}"><label style="margin-top:6px">Login link</label><input readonly onclick="this.select()" style="width:100%" value="${esc(shareLink())}"></div><div class="sc"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th></th></tr></thead><tbody>${people.map(p=>`<tr><td>${esc(p.name)}</td><td>${esc(p.email)}</td><td><select ${p.id==me.id?"disabled":""} onchange="setRole('${p.id}',this.value)"><option value="personnel" ${p.role=="personnel"?"selected":""}>Personnel</option><option value="admin" ${p.role=="admin"?"selected":""}>Administrator</option></select></td><td>${p.id==me.id?"":`<button class="d" onclick="rmPerson('${p.id}')">Remove</button>`}</td></tr>`).join("")}</tbody></table></div></div>`:""}`;
+ ${adm?`<div class="card pg-p"><h2>Administrator Profile — Accounts</h2><p style="color:var(--mut);margin:0 0 8px">The first account created is the administrator. Change roles here.</p><div style="margin-bottom:12px"><b>Share links</b><label style="margin-top:6px">Personnel sign-up link (send to personnel)</label><input readonly onclick="this.select()" style="width:100%" value="${esc(shareLink("signup"))}"><label style="margin-top:6px">Login link</label><input readonly onclick="this.select()" style="width:100%" value="${esc(shareLink())}"></div><div class="sc"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th></th></tr></thead><tbody>${people.map(p=>`<tr><td>${esc(p.name)}${p.admin_request&&p.role!="admin"?'<br><small style="color:var(--pr)">Requested administrator</small>':''}</td><td>${esc(p.email)}</td><td><select ${p.id==me.id?"disabled":""} onchange="setRole('${p.id}',this.value)"><option value="personnel" ${p.role=="personnel"?"selected":""}>Personnel</option><option value="admin" ${p.role=="admin"?"selected":""}>Administrator</option></select></td><td>${p.id==me.id?"":`<button class="d" onclick="rmPerson('${p.id}')">Remove</button>`}</td></tr>`).join("")}</tbody></table></div></div>`:""}`;
 }
 function lbl(r){return MO[r.month]+((r.month_to||r.month)>r.month?" – "+MO[r.month_to]:"")+" "+r.year}
 function per(){return mf==0&&mt==11?"":(mf==mt?MO[mf]:MO[mf]+" – "+MO[mt])+" "}
