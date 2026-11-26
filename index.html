@@ -36,8 +36,8 @@ body:not([data-page="prof"]) .pg-p{display:none}body[data-page="prof"] .pg-d{dis
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
 /* ===== STEP: paste your two Supabase values here ===== */
-const SUPABASE_URL="PASTE_YOUR_SUPABASE_URL_HERE";
-const SUPABASE_KEY="PASTE_YOUR_SUPABASE_ANON_KEY_HERE";
+let SUPABASE_URL="PASTE_YOUR_SUPABASE_URL_HERE";
+let SUPABASE_KEY="PASTE_YOUR_SUPABASE_ANON_KEY_HERE";
 /* ===================================================== */
 const MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const $=s=>document.querySelector(s);
@@ -48,9 +48,12 @@ let sb,me=null,prof=null,rows=[],eds=[],people=[],year=new Date().getFullYear(),
 const BADGE='<span style="font-size:12px;background:var(--pr);color:var(--prt);padding:3px 8px;border-radius:6px;vertical-align:middle;margin-left:4px;letter-spacing:1px">OUTPUT</span>';
 const I='style="width:100%;margin-bottom:10px"';
 async function boot(){
- if(SUPABASE_URL.startsWith("PASTE")){document.body.classList.add("lg");$("#app").innerHTML='<div class="card" style="max-width:420px;margin:8vh auto 0"><h1>Setup needed</h1><p>Open this file in a text editor and paste your Supabase URL and anon key at the top of the script.</p></div>';return}
+ try{const h=location.hash.slice(1).split("&"),c=h.find(x=>x.startsWith("cfg="));
+  if(c){localStorage.setItem("yk_cfg",atob(c.slice(4)));history.replaceState(null,"",location.pathname+(h.includes("signup")?"#signup":""))}
+  if(SUPABASE_URL.startsWith("PASTE")){const o=JSON.parse(localStorage.getItem("yk_cfg")||"null");if(o){SUPABASE_URL=o.u;SUPABASE_KEY=o.k}}}catch(e){}
+ if(SUPABASE_URL.startsWith("PASTE")){document.body.classList.add("lg");$("#app").innerHTML='<div class="card" style="max-width:420px;margin:8vh auto 0"><h1>Setup (one time)</h1><p style="color:var(--mut)">Paste your Supabase Project URL and key. No file editing needed.</p><label>Project URL</label><input id="cu" placeholder="https://xxxx.supabase.co" '+I+'><label>Anon public / Publishable key</label><input id="ck" '+I+'><div class="err" id="er"></div><button style="width:100%" onclick="saveCfg()">Save and continue</button></div>';return}
  sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
- if(location.hash=="#signup")scr="reg";
+ if(location.hash.split("&").includes("#signup")||location.hash=="#signup")scr="reg";
  sb.auth.onAuthStateChange((ev)=>{
   if(ev=="PASSWORD_RECOVERY"){recovery=true;setTimeout(render,0)}
   else if(ev=="SIGNED_OUT"){me=null;prof=null;setTimeout(render,0)}
@@ -61,6 +64,10 @@ async function boot(){
  setInterval(async()=>{if(!me||!prof||$(".mo")||recovery)return;const b=JSON.stringify(rows)+JSON.stringify(people);await loadAll();
   if(b!==JSON.stringify(rows)+JSON.stringify(people)&&!document.activeElement.matches("input,select"))render()},30000);
 }
+function saveCfg(){const u=$("#cu").value.trim().replace(/\/+$/,""),k=$("#ck").value.trim();
+ if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(u)||k.length<20){$("#er").textContent="Check the Project URL (https://xxxx.supabase.co) and the key.";return}
+ localStorage.setItem("yk_cfg",JSON.stringify({u,k}));location.reload()}
+function shareLink(x){return location.origin+location.pathname+"#cfg="+btoa(JSON.stringify({u:SUPABASE_URL,k:SUPABASE_KEY}))+(x?"&"+x:"")}
 async function loadAll(){
  const p=await sb.from("profiles").select("*").eq("id",me.id).maybeSingle();prof=p.data||null;
  const c=await sb.from("claims").select("*").order("year").order("month");
@@ -160,7 +167,7 @@ function dash(){
  <div class="sc"><table><thead><tr><th>Month</th><th>Registered</th><th>Transmitted</th><th>Returned</th><th>Net amount</th>${adm?"<th></th>":""}</tr></thead><tbody>
  ${R.length?R.slice().sort((a,b)=>a.month-b.month).map(r=>`<tr><td>${lbl(r)}</td><td>${num(r.registered)}</td><td>${num(r.transmitted)}</td><td>${num(r.returned)}</td><td>${peso(r.net)}</td>${adm?`<td><button class="d" onclick="delRec(${r.id})">Delete</button></td>`:""}</tr>`).join(""):`<tr><td colspan="6" style="text-align:center;color:var(--mut)">No entries.</td></tr>`}
  </tbody><tfoot><tr><td>Total</td><td>${num(T.reg)}</td><td>${num(T.tx)}</td><td>${num(T.ret)}</td><td>${peso(T.net)}</td>${adm?"<td></td>":""}</tr></tfoot></table></div></div>
- ${adm?`<div class="card pg-p"><h2>Administrator Profile — Accounts</h2><p style="color:var(--mut);margin:0 0 8px">The first account created is the administrator. Change roles here.</p><div class="sc"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th></th></tr></thead><tbody>${people.map(p=>`<tr><td>${esc(p.name)}</td><td>${esc(p.email)}</td><td><select ${p.id==me.id?"disabled":""} onchange="setRole('${p.id}',this.value)"><option value="personnel" ${p.role=="personnel"?"selected":""}>Personnel</option><option value="admin" ${p.role=="admin"?"selected":""}>Administrator</option></select></td><td>${p.id==me.id?"":`<button class="d" onclick="rmPerson('${p.id}')">Remove</button>`}</td></tr>`).join("")}</tbody></table></div></div>`:""}`;
+ ${adm?`<div class="card pg-p"><h2>Administrator Profile — Accounts</h2><p style="color:var(--mut);margin:0 0 8px">The first account created is the administrator. Change roles here.</p><div style="margin-bottom:12px"><b>Share links</b><label style="margin-top:6px">Personnel sign-up link (send to personnel)</label><input readonly onclick="this.select()" style="width:100%" value="${esc(shareLink("signup"))}"><label style="margin-top:6px">Login link</label><input readonly onclick="this.select()" style="width:100%" value="${esc(shareLink())}"></div><div class="sc"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th></th></tr></thead><tbody>${people.map(p=>`<tr><td>${esc(p.name)}</td><td>${esc(p.email)}</td><td><select ${p.id==me.id?"disabled":""} onchange="setRole('${p.id}',this.value)"><option value="personnel" ${p.role=="personnel"?"selected":""}>Personnel</option><option value="admin" ${p.role=="admin"?"selected":""}>Administrator</option></select></td><td>${p.id==me.id?"":`<button class="d" onclick="rmPerson('${p.id}')">Remove</button>`}</td></tr>`).join("")}</tbody></table></div></div>`:""}`;
 }
 function lbl(r){return MO[r.month]+((r.month_to||r.month)>r.month?" – "+MO[r.month_to]:"")+" "+r.year}
 function per(){return mf==0&&mt==11?"":(mf==mt?MO[mf]:MO[mf]+" – "+MO[mt])+" "}
