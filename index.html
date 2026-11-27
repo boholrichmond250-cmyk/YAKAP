@@ -113,6 +113,15 @@ function removeMe(){
  },true,"Remove account");
 }
 function gmOf(u){const a=users.find(x=>x.u.toLowerCase()===String(u).toLowerCase());return a&&a.email?a.email:""}
+function b64(o){return btoa(unescape(encodeURIComponent(JSON.stringify(o))))}
+function unb64(t){return JSON.parse(decodeURIComponent(escape(atob(t))))}
+function accLink(u){
+ const a=users.find(x=>x.u===u);if(!a)return;
+ const link=location.href.split("#")[0]+"#acct="+b64({a:{u:a.u,p:a.p,name:a.name,role:"user",email:a.email||""},recs,eds});
+ note('<b>Access link for '+esc(a.name)+'</b><p style="margin:8px 0;color:var(--mut)">Send this link to the person privately (chat or message). When they open it on their phone, their account is ready and they log in with the username <b>'+esc(a.u)+'</b> and the password you set. The link also carries the current numbers, so send a new link whenever you want to update what they see.</p><input id="lk" readonly style="width:100%" value="'+link+'"><div style="margin-top:8px"><button id="cp">Copy link</button></div><div id="cpm" style="color:#4ade80;font-weight:600;margin-top:6px;min-height:18px"></div>');
+ $("#lk").onclick=function(){this.select()};
+ $("#cp").onclick=async()=>{try{await navigator.clipboard.writeText(link);$("#cpm").textContent="\u2713 Link copied. Send it to the person."}catch(e){$("#lk").select();$("#cpm").textContent="Press and hold the link, choose Copy, then send it."}};
+}
 function mailFor(em,code){return 'mailto:'+encodeURIComponent(em)+'?subject='+encodeURIComponent('YAKAP System password reset code')+'&body='+encodeURIComponent('Your password reset code is '+code+'. Open the YAKAP System, click Forgot password?, and enter this code with your username.')}
 function delOtp(id){const o=load("yk_otp",{});delete o[id];save("yk_otp",o);otps=otps.filter(x=>x.id!==id);if(DB)DB.doc("otp/"+id).delete().catch(()=>{});toast="\u2713 Request dismissed.";dash()}
 async function sendOtp(){
@@ -261,7 +270,7 @@ function dash(){
  <div style="margin:14px 0 4px;font-weight:700">Password reset requests (OTP received)</div>
  ${reqs.length?reqs.map(o=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--bd)"><span>${esc(o.email)}${gmOf(o.email)?`<br><small style="color:var(--pr)">${esc(gmOf(o.email))}</small>`:""}<br><small style="color:var(--mut)">valid until ${new Date(o.exp).toLocaleTimeString()}</small></span><b style="font-size:22px;letter-spacing:4px;color:var(--pr)">${esc(o.code)}</b><span>${gmOf(o.email)?`<a href="${mailFor(gmOf(o.email),o.code)}" target="_blank" rel="noopener" style="color:var(--pr);margin-right:8px">Send to Gmail</a>`:""}<button class="d" onclick="delOtp('${esc(o.id)}')">Dismiss</button></span></div>`).join(""):'<small style="color:var(--mut)">No requests yet.</small>'}
  <div style="margin:14px 0 4px;font-weight:700">Accounts</div>
- ${users.map(u=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid var(--bd)"><span>${esc(u.name)} <small style="color:var(--mut)">(${esc(u.u)}${u.role=="admin"?", admin":""})</small>${u.email?`<br><small style="color:var(--mut)">${esc(u.email)}</small>`:""}</span>${u.u!="admin"?`<button class="d" onclick="delUser('${esc(u.u)}')">Remove</button>`:`<button class="d" style="color:var(--pr)" onclick="chPw()">Change password</button>`}</div>`).join("")}</div>`:""}`;
+ ${users.map(u=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid var(--bd)"><span>${esc(u.name)} <small style="color:var(--mut)">(${esc(u.u)}${u.role=="admin"?", admin":""})</small>${u.email?`<br><small style="color:var(--mut)">${esc(u.email)}</small>`:""}</span>${u.u!="admin"?`<span>${u.role=="user"?`<button class="g" style="margin-right:6px" onclick="accLink('${esc(u.u)}')">Access link</button>`:""}<button class="d" onclick="delUser('${esc(u.u)}')">Remove</button></span>`:`<button class="d" style="color:var(--pr)" onclick="chPw()">Change password</button>`}</div>`).join("")}</div>`:""}`;
 }
 function mergeDup(a){const m={};a.forEach(r=>{const k=r.y+"-"+r.m;if(m[k]){const x=m[k];x.to=Math.max(x.to||x.m,r.to||r.m);x.reg+=r.reg;x.tx+=r.tx;x.net+=r.net;x.ret=(x.ret||0)+(r.ret||0);x.den=(x.den||0)+(r.den||0);x.ers=(x.ers||0)+(r.ers||0)}else m[k]={...r}});return Object.values(m)}
 function lbl(r){return MO[r.m]+((r.to||r.m)>r.m?" – "+MO[r.to]:"")+" "+r.y}
@@ -283,7 +292,7 @@ function addUser(){
  if(gm&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(gm)){$("#ue").textContent="Enter a valid Gmail, e.g. name@gmail.com";return}
  if(users.some(x=>x.u.toLowerCase()===u.toLowerCase())){$("#ue").textContent="Username already exists.";return}
  const role=$("#ar").value;if(role=="admin"&&users.filter(x=>x.role=="admin").length>=4){$("#ue").textContent="Limit reached: only 4 administrator accounts are allowed.";return}
- users.push({u,p,name:n,role,email:gm});save("yk_users",users);toast="✓ Account added successfully.";acctMsg="✓ Account added successfully. "+n+" can now log in with the username "+u+".";dash();
+ users.push({u,p,name:n,role,email:gm});save("yk_users",users);toast="✓ Account added successfully.";acctMsg="✓ Account added successfully. "+n+" can now log in with the username "+u+".";if(role=="user")setTimeout(()=>accLink(u),60);dash();
 }
 function delUser(u){ask("Remove account "+u+"?",()=>{users=users.filter(x=>x.u!==u);save("yk_users",users);toast="✓ Account removed successfully.";dash()})}
 function chPw(){ask("New administrator password (4+ characters):",v=>{if(v&&v.length>=4){users.find(x=>x.u=="admin").p=v;save("yk_users",users);toast="✓ Password changed successfully."}else{toast="Password must be 4+ characters."}dash()},true)}
@@ -322,5 +331,11 @@ function viewOnly(){me={u:"viewer",name:"Viewer",role:"viewer"};render()}
  },()=>{});
  if(me)dash();else if(!showReg&&!showFg&&!showAdm&&!showAR&&(!$("#lu")||!$("#lu").value))login();
 }catch(e){}})();
+(function(){try{const h=location.hash;if(h.startsWith("#acct=")){const d=unb64(h.slice(6)),a=d.a;
+ const i=users.findIndex(x=>x.u.toLowerCase()===a.u.toLowerCase());
+ if(!(i>=0&&users[i].role=="admin")){if(i>=0)users[i]=a;else users.push(a);save("yk_users",users)}
+ if(d.recs){recs=mergeDup(d.recs);eds=d.eds||[];migrate(recs,eds);save("yk_recs",recs);save("yk_eds",eds)}
+ history.replaceState(null,"",location.pathname+location.search);
+ loginMsg="\u2713 Your account is ready. Log in with the username "+a.u+" and your password."}}catch(e){}})();
 render();
 </script></body></html>
