@@ -121,7 +121,7 @@ async function sendOtp(){
  const code=String(crypto.getRandomValues(new Uint32Array(1))[0]%900000+100000),id=await hash("reset",em),exp=Date.now()+600000,h=await hash(code,em);
  if(DB){try{await DB.doc("resets/"+id).set({h,exp});await DB.doc("otp/"+id).set({email:em,code,exp,ts:Date.now()})}catch(e){er.textContent="Could not send the OTP. Ask the administrator for Contributor access or to generate a code for you.";return}}
  else{const r=load("yk_resets",{});r[id]={h,exp};save("yk_resets",r);const o=load("yk_otp",{});o[id]={id,email:em,code,exp,ts:Date.now()};save("yk_otp",o)}
- fm.textContent="\u2713 OTP sent to the administrator successfully. Ask the administrator for the 6-digit code (valid 10 minutes), then enter it below.";
+ fm.textContent="\u2713 One-time PIN sent successfully. The administrator received it and will give you the 6-digit code (valid 10 minutes). Enter it below.";
 }
 function createAdmin(){
  const n=$("#xn").value.trim(),u=$("#xu").value.trim(),p=$("#xp").value,q=$("#xq").value,er=$("#xe");
@@ -205,7 +205,7 @@ async function doReset(){
  else if(DB&&UID){try{const ref=DB.doc("data/users/"+UID+"/profile"),sn=await ref.get();
   if(sn.exists&&sn.data().email===em){await ref.set({...sn.data(),ph:await hash(p1,em)});ok=true}}catch(e){}}
  if(!ok){er.textContent="No account found for this email.";return}
- showFg=false;loginMsg="\u2713 Password changed successfully. Log in with your new password.";login();
+ showFg=false;loginMsg="\u2713 Password reset successfully. Log in with your new password.";login();
 }
 async function hash(p,e){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(e+"|"+p));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}
 async function regUser(){
