@@ -46,7 +46,7 @@ let recs=mergeDup(load("yk_recs",SEED_RECS)),eds=load("yk_eds",SEED_EDS);migrate
 let me=null,year=new Date().getFullYear(),mode="user",mf=0,mt=11,welcome=false,toast="",msg="";
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 function render(){if(!me)page="dash";document.body.classList.toggle("lg",!me);document.body.classList.toggle("db",!!me);me?dash():login()}
-var showReg=false,showFg=false,showAdm=false,showAR=false,page="dash",loginMsg="";
+var acctMsg="",showReg=false,showFg=false,showAdm=false,showAR=false,page="dash",loginMsg="";
 function login(){
  const lm=loginMsg;loginMsg="";
  const inp='style="width:100%;margin-bottom:10px"';
@@ -82,7 +82,6 @@ function login(){
  <label>Username</label><input id="lu" ${inp} autocomplete="username">
  <label>Password</label><input id="lp" type="password" style="width:100%;margin-bottom:6px" autocomplete="current-password">
  <div id="lm" style="color:#4ade80;font-weight:600">${lm}</div><div style="text-align:right;margin:0 0 6px"><a href="#" onclick="showFg=true;login();return false" style="color:var(--pr);font-size:13px">Forgot password?</a></div><div class="err" id="le"></div><button style="width:100%" onclick="doLogin()">Log in</button>
- <button class="g" style="width:100%;margin-top:8px" onclick="showReg=true;login()">Create account</button>
  <button class="g" style="width:100%;margin-top:8px" onclick="showAdm=true;login()">Administrator login</button>`;
  $("#app").innerHTML=`<div class="card" style="max-width:380px;margin:8vh auto 0">${f}</div>`;
  if(showAdm)$("#apw").onkeydown=e=>{if(e.key=="Enter")adminLogin()};
@@ -229,7 +228,7 @@ function dash(){
  const EN=eds.filter(e=>e.y==year&&e.m>=mf&&e.m<=mt).reduce((a,e)=>a+e.n,0);
  const rate=T.reg?(T.tx/T.reg*100).toFixed(1):"0.0";
  const sg=segs(yrAll()),mx=Math.max(...sg.map(g=>g.v),1);
- const isA=me.role=="admin",adm=isA&&(canW||!DB);document.body.dataset.page=isA?page:"dash";const mm=msg;msg="";const reqs=[...otps,...Object.values(load("yk_otp",{}))].filter(o=>o.exp>Date.now()).sort((a,b)=>b.ts-a.ts);const warn=isA&&me.p==="admin123"?`<div class="card" style="border-color:var(--dg);color:var(--dg)">Your administrator password is still the default. Click \u201cChange password\u201d in the Accounts section below.</div>`:"";const tk=toast?`<div class="card" id="tb" style="border-color:var(--pr);color:var(--pr);font-weight:600">${toast}</div>`:"";toast="";setTimeout(()=>{const e=$("#tb");if(e)e.remove()},4000);
+ const isA=me.role=="admin",adm=isA&&(canW||!DB);document.body.dataset.page=isA?page:"dash";const mm=msg;msg="";const am=acctMsg;acctMsg="";const reqs=[...otps,...Object.values(load("yk_otp",{}))].filter(o=>o.exp>Date.now()).sort((a,b)=>b.ts-a.ts);const warn=isA&&me.p==="admin123"?`<div class="card" style="border-color:var(--dg);color:var(--dg)">Your administrator password is still the default. Click \u201cChange password\u201d in the Accounts section below.</div>`:"";const tk=toast?`<div class="card" id="tb" style="border-color:var(--pr);color:var(--pr);font-weight:600">${toast}</div>`:"";toast="";setTimeout(()=>{const e=$("#tb");if(e)e.remove()},4000);
  const ok=welcome?`<div class="card" id="wb" style="border-color:var(--pr);color:var(--pr);font-weight:600">✓ Successfully logged in. Welcome, ${esc(me.name)}!</div>`:"";welcome=false;setTimeout(()=>{const e=$("#wb");if(e)e.remove()},4000);
  $("#app").innerHTML=`
  ${ok}${tk}${warn}<div class="top" style="flex-direction:column;align-items:stretch;gap:8px">
@@ -258,7 +257,7 @@ function dash(){
  </tbody><tfoot><tr><td>Total</td><td>${num(T.reg)}</td><td>${num(T.tx)}</td><td>${num(T.ret)}</td><td>${peso(T.net)}</td>${adm?"<td></td>":""}</tr></tfoot></table></div></div>
  ${isA?`<div class="card pg-p"><h2>Administrator Profile — OTP &amp; Accounts</h2><div class="row">
  <div><label>Full name</label><input id="an"></div><div><label>Username</label><input id="au"></div><div><label>Gmail (for OTP)</label><input id="ag" type="email" placeholder="name@gmail.com"></div><div><label>Password</label><input id="ap" type="text"></div><div><label>Account type</label><select id="ar"><option value="user">Personnel (view only)</option><option value="admin">Administrator</option></select></div><button onclick="addUser()">Create</button></div>
- <div class="row" style="margin-top:10px"><div><label>Reset code for personnel</label><select id="gp">${users.filter(x=>x.role!="admin").map(x=>`<option value="${esc(x.u)}">${esc(x.name)} (${esc(x.u)})</option>`).join("")||'<option value="">No personnel accounts yet</option>'}</select></div><button onclick="genCode()">Generate reset code</button></div><div id="gm" style="color:#4ade80;font-weight:600;min-height:20px;margin-top:6px"></div><div class="err" id="ue"></div>
+ <div class="row" style="margin-top:10px"><div><label>Reset code for personnel</label><select id="gp">${users.filter(x=>x.role!="admin").map(x=>`<option value="${esc(x.u)}">${esc(x.name)} (${esc(x.u)})</option>`).join("")||'<option value="">No personnel accounts yet</option>'}</select></div><button onclick="genCode()">Generate reset code</button></div><div id="gm" style="color:#4ade80;font-weight:600;min-height:20px;margin-top:6px">${am}</div><div class="err" id="ue"></div>
  <div style="margin:14px 0 4px;font-weight:700">Password reset requests (OTP received)</div>
  ${reqs.length?reqs.map(o=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--bd)"><span>${esc(o.email)}${gmOf(o.email)?`<br><small style="color:var(--pr)">${esc(gmOf(o.email))}</small>`:""}<br><small style="color:var(--mut)">valid until ${new Date(o.exp).toLocaleTimeString()}</small></span><b style="font-size:22px;letter-spacing:4px;color:var(--pr)">${esc(o.code)}</b><span>${gmOf(o.email)?`<a href="${mailFor(gmOf(o.email),o.code)}" target="_blank" rel="noopener" style="color:var(--pr);margin-right:8px">Send to Gmail</a>`:""}<button class="d" onclick="delOtp('${esc(o.id)}')">Dismiss</button></span></div>`).join(""):'<small style="color:var(--mut)">No requests yet.</small>'}
  <div style="margin:14px 0 4px;font-weight:700">Accounts</div>
@@ -284,7 +283,7 @@ function addUser(){
  if(gm&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(gm)){$("#ue").textContent="Enter a valid Gmail, e.g. name@gmail.com";return}
  if(users.some(x=>x.u.toLowerCase()===u.toLowerCase())){$("#ue").textContent="Username already exists.";return}
  const role=$("#ar").value;if(role=="admin"&&users.filter(x=>x.role=="admin").length>=4){$("#ue").textContent="Limit reached: only 4 administrator accounts are allowed.";return}
- users.push({u,p,name:n,role,email:gm});save("yk_users",users);toast="✓ "+(role=="admin"?"Administrator":"Personnel")+" account created successfully.";dash();
+ users.push({u,p,name:n,role,email:gm});save("yk_users",users);toast="✓ Account added successfully.";acctMsg="✓ Account added successfully. "+n+" can now log in with the username "+u+".";dash();
 }
 function delUser(u){ask("Remove account "+u+"?",()=>{users=users.filter(x=>x.u!==u);save("yk_users",users);toast="✓ Account removed successfully.";dash()})}
 function chPw(){ask("New administrator password (4+ characters):",v=>{if(v&&v.length>=4){users.find(x=>x.u=="admin").p=v;save("yk_users",users);toast="✓ Password changed successfully."}else{toast="Password must be 4+ characters."}dash()},true)}
