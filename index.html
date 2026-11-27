@@ -31,173 +31,216 @@ body.db .wrap{max-width:1100px;margin:0 auto;padding:12px 16px 24px}body.db .wra
 .mo{position:fixed;inset:0;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;z-index:99;padding:16px}.mb{background:var(--bg);color:var(--tx);border:1px solid var(--bd);border-radius:12px;padding:18px;max-width:380px;width:100%}
 body:not([data-page="prof"]) .pg-p{display:none}body[data-page="prof"] .pg-d{display:none}
 @media(max-width:640px){.kpis{grid-template-columns:repeat(2,1fr)}}
-</style></head><body>
-<div class="wrap" id="app"></div>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+</style></head><body><div class="wrap" id="app"></div>
 <script>
-/* ===== STEP: paste your two Supabase values here ===== */
-let SUPABASE_URL="PASTE_YOUR_SUPABASE_URL_HERE";
-let SUPABASE_KEY="PASTE_YOUR_SUPABASE_ANON_KEY_HERE";
-/* ===================================================== */
 const MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const $=s=>document.querySelector(s);
-const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const peso=n=>"₱"+Number(n||0).toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
 const num=n=>Number(n||0).toLocaleString("en-PH");
-let inReset=false,sb,me=null,prof=null,rows=[],eds=[],people=[],year=new Date().getFullYear(),mf=0,mt=11,page="dash",scr="login",admErr="",okmsg="",toast="",recovery=false;
-const BADGE='<span style="font-size:12px;background:var(--pr);color:var(--prt);padding:3px 8px;border-radius:6px;vertical-align:middle;margin-left:4px;letter-spacing:1px">OUTPUT</span>';
-const I='style="width:100%;margin-bottom:10px"';
-const myFetch=(...a)=>fetch(...a).catch(()=>{throw new TypeError("Cannot reach the database. Check the Project URL (it must end in .supabase.co), your internet, and that your Supabase project is not paused.")});
-async function boot(){
- try{if(location.hash=="#reset"){localStorage.removeItem("yk_cfg");history.replaceState(null,"",location.pathname)}
-  const h=location.hash.slice(1).split("&"),c=h.find(x=>x.startsWith("cfg="));
-  if(c){localStorage.setItem("yk_cfg",atob(c.slice(4)));history.replaceState(null,"",location.pathname+(h.includes("signup")?"#signup":""))}
-  if(SUPABASE_URL.startsWith("PASTE")){const o=JSON.parse(localStorage.getItem("yk_cfg")||"null");if(o){SUPABASE_URL=o.u;SUPABASE_KEY=o.k}}}catch(e){}
- if(SUPABASE_URL.startsWith("PASTE")){document.body.classList.add("lg");$("#app").innerHTML='<div class="card" style="max-width:420px;margin:8vh auto 0"><h1>Setup (one time)</h1><p style="color:var(--mut)">Paste your Supabase Project URL and key. No file editing needed.</p><label>Project URL</label><input id="cu" placeholder="https://xxxx.supabase.co" '+I+'><label>Anon public / Publishable key</label><input id="ck" '+I+'><div class="err" id="er"></div><button style="width:100%" onclick="saveCfg()">Save and continue</button></div>';return}
- sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{global:{fetch:myFetch}});
- if(location.hash.split("&").includes("#signup")||location.hash=="#signup")scr="reg";
- sb.auth.onAuthStateChange((ev)=>{
-  if(ev=="PASSWORD_RECOVERY"){if(!inReset){recovery=true;setTimeout(render,0)}}
-  else if(ev=="SIGNED_OUT"){if(!inReset){me=null;prof=null;setTimeout(render,0)}}
- });
- const {data}=await sb.auth.getSession();me=data.session?data.session.user:null;
- if(me&&!recovery)await loadAll();
- render();
- setInterval(async()=>{if(!me||!prof||$(".mo")||recovery)return;const b=JSON.stringify(rows)+JSON.stringify(people);await loadAll();
-  if(b!==JSON.stringify(rows)+JSON.stringify(people)&&!document.activeElement.matches("input,select"))render()},30000);
+let mem={};
+function load(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return mem[k]??d}}
+function save(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){mem[k]=v}}
+let users=load("yk_users",[{u:"admin",p:"admin123",name:"Administrator",role:"admin"}]);
+const SEED_RECS=[{"id": 1700000000000, "y": 2026, "m": 0, "to": 2, "reg": 531, "tx": 359, "net": 244120, "ret": 0, "den": 0, "ers": 0}, {"id": 1700000000001, "y": 2026, "m": 3, "to": 4, "reg": 153, "tx": 57, "net": 38760, "ret": 0, "den": 0, "ers": 0}, {"id": 1700000000002, "y": 2026, "m": 5, "to": 5, "reg": 72, "tx": 21, "net": 14280, "ret": 0, "den": 0, "ers": 0}, {"id": 1700000000003, "y": 2026, "m": 6, "to": 6, "reg": 145, "tx": 56, "net": 38080, "ret": 0, "den": 0, "ers": 0}, {"id": 1700000000004, "y": 2026, "m": 7, "to": 7, "reg": 219, "tx": 167, "net": 113560, "ret": 0, "den": 0, "ers": 0}, {"id": 1700000000005, "y": 2026, "m": 8, "to": 8, "reg": 379, "tx": 85, "net": 57800, "ret": 0, "den": 0, "ers": 0}, {"id": 1700000000006, "y": 2026, "m": 9, "to": 9, "reg": 120, "tx": 81, "net": 55080, "ret": 0, "den": 0, "ers": 0}],SEED_EDS=[{"id": 1700000001000, "y": 2026, "m": 0, "to": 8, "t": "e", "n": 60}];
+let recs=mergeDup(load("yk_recs",SEED_RECS)),eds=load("yk_eds",SEED_EDS);migrate(recs,eds);
+let me=null,year=new Date().getFullYear(),mode="user",mf=0,mt=11,welcome=false,toast="",msg="";
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function render(){if(!me)page="dash";document.body.classList.toggle("lg",!me);document.body.classList.toggle("db",!!me);me?dash():login()}
+var acctMsg="",showReg=false,showFg=false,showAdm=false,showAR=false,page="dash",loginMsg="";
+function login(){
+ const lm=loginMsg;loginMsg="";
+ const inp='style="width:100%;margin-bottom:10px"';
+ const f=showAR?`<h1>YAKAP System <span style="font-size:12px;background:var(--pr);color:var(--prt);padding:3px 8px;border-radius:6px;vertical-align:middle;margin-left:4px;letter-spacing:1px">ADMIN</span></h1><p style="color:var(--mut);margin:4px 0 12px">Create administrator account</p>
+ <label>Full name</label><input id="xn" ${inp}>
+ <label>Gmail</label><input id="xu" type="email" placeholder="name@gmail.com" ${inp} autocomplete="off">
+ <label>Password (4+ characters)</label><input id="xp" type="password" ${inp} autocomplete="new-password">
+ <label>Confirm password</label><input id="xq" type="password" ${inp} autocomplete="new-password">
+ <div class="err" id="xe"></div><button style="width:100%" onclick="createAdmin()">Create administrator account</button>
+ <button class="g" style="width:100%;margin-top:8px" onclick="showAR=false;showAdm=true;login()">Back</button>`
+ :showAdm?`<h1>YAKAP System <span style="font-size:12px;background:var(--pr);color:var(--prt);padding:3px 8px;border-radius:6px;vertical-align:middle;margin-left:4px;letter-spacing:1px">ADMIN</span></h1><div style="height:14px"></div>
+ <label>Gmail or username</label><input id="aid" ${inp} autocomplete="off">
+ <label>Administrator password</label><input id="apw" type="password" style="width:100%;margin-bottom:6px" autocomplete="off">
+ <div class="err" id="ae2"></div><button style="width:100%" onclick="adminLogin()">Log in as administrator</button>
+ <button class="g" style="width:100%;margin-top:8px" onclick="showAdm=false;showAR=true;login()">Create administrator account</button>
+ <button class="g" style="width:100%;margin-top:8px" onclick="showAdm=false;login()">Back to log in</button>`
+ :showFg?`<h1>YAKAP System <span style="font-size:12px;background:var(--pr);color:var(--prt);padding:3px 8px;border-radius:6px;vertical-align:middle;margin-left:4px;letter-spacing:1px">OUTPUT</span></h1><p style="color:var(--mut);margin:4px 0 14px">Forgot password? Enter your username and send the OTP. It goes straight to the administrator, who will give you the 6-digit code to enter below.</p>
+ <label>Username</label><input id="fe" ${inp} autocomplete="off">
+ <button class="g" style="width:100%;margin:-2px 0 8px" onclick="sendOtp()">Send OTP to administrator</button><div id="fm" style="color:#4ade80;font-weight:600;margin-bottom:6px"></div>
+ <label>6-digit code</label><input id="fc" inputmode="numeric" maxlength="6" placeholder="123456" ${inp} autocomplete="off">
+ <label>New password (4+ characters)</label><input id="fp" type="password" ${inp} autocomplete="new-password">
+ <label>Confirm new password</label><input id="fq" type="password" style="width:100%;margin-bottom:6px" autocomplete="new-password">
+ <div class="err" id="fr"></div><button style="width:100%" onclick="doReset()">Change password</button>
+ <button class="g" style="width:100%;margin-top:8px" onclick="showFg=false;login()">Back to log in</button>`
+ :showReg?`<h1>YAKAP System <span style="font-size:12px;background:var(--pr);color:var(--prt);padding:3px 8px;border-radius:6px;vertical-align:middle;margin-left:4px;letter-spacing:1px">OUTPUT</span></h1><p style="color:var(--mut);margin:4px 0 14px">Create your account. Choose a username and password.</p>
+ <label>Full name</label><input id="rn" ${inp}>
+ <label>Username</label><input id="ru" ${inp} autocomplete="off">
+ <label>Password (4+ characters)</label><input id="rp" type="password" ${inp} autocomplete="new-password">
+ <label>Confirm password</label><input id="rq" type="password" style="width:100%;margin-bottom:6px" autocomplete="new-password">
+ <div class="err" id="re"></div><button style="width:100%" onclick="regUser()">Create account</button>
+ <button class="g" style="width:100%;margin-top:8px" onclick="showReg=false;login()">Back to log in</button>`
+ :`<h1>YAKAP System <span style="font-size:12px;background:var(--pr);color:var(--prt);padding:3px 8px;border-radius:6px;vertical-align:middle;margin-left:4px;letter-spacing:1px">OUTPUT</span></h1><div style="height:14px"></div>
+ <label>Username</label><input id="lu" ${inp} autocomplete="username">
+ <label>Password</label><input id="lp" type="password" style="width:100%;margin-bottom:6px" autocomplete="current-password">
+ <div id="lm" style="color:#4ade80;font-weight:600">${lm}</div><div style="text-align:right;margin:0 0 6px"><a href="#" onclick="showFg=true;login();return false" style="color:var(--pr);font-size:13px">Forgot password?</a></div><div class="err" id="le"></div><button style="width:100%" onclick="doLogin()">Log in</button>
+ <button class="g" style="width:100%;margin-top:8px" onclick="showAdm=true;login()">Administrator login</button>`;
+ $("#app").innerHTML=`<div class="card" style="max-width:380px;margin:8vh auto 0">${f}</div>`;
+ if(showAdm)$("#apw").onkeydown=e=>{if(e.key=="Enter")adminLogin()};
+ if(!showReg&&!showFg&&!showAdm&&!showAR)$("#lp").onkeydown=e=>{if(e.key=="Enter")doLogin()};
 }
-function saveCfg(){const u=$("#cu").value.trim().replace(/\/+$/,""),k=$("#ck").value.trim();
- if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(u)||k.length<20){$("#er").textContent="Check the Project URL (https://xxxx.supabase.co) and the key.";return}
- localStorage.setItem("yk_cfg",JSON.stringify({u,k}));location.reload()}
-function shareLink(x){return location.origin+location.pathname+"#cfg="+btoa(JSON.stringify({u:SUPABASE_URL,k:SUPABASE_KEY}))+(x?"&"+x:"")}
-async function loadAll(){
- const p=await sb.from("profiles").select("*").eq("id",me.id).maybeSingle();prof=p.data||null;
- const c=await sb.from("claims").select("*").order("year").order("month");
- const mm={};(c.data||[]).forEach(r=>{const k=r.year+"-"+r.month;if(mm[k]){const x=mm[k];["registered","transmitted","returned","denied"].forEach(f=>x[f]+=r[f]);x.errs=(x.errs||0)+(r.errs||0);x.net=Number(x.net)+Number(r.net);x.month_to=Math.max(x.month_to||x.month,r.month_to||r.month);x.ids.push(r.id)}else mm[k]={...r,ids:[r.id]}});const all=Object.values(mm);
- const q2=await sb.from("error_denied").select("*").order("year").order("month");
- eds=(q2.data||[]).map(r=>({id:r.id,y:r.year,m:r.month,to:r.month_to||r.month,t:r.kind=="error"?"e":"d",n:r.n}));
- all.forEach(r=>{[["e",r.errs||0],["d",r.denied||0]].forEach(a=>{if(a[1]>0)eds.push({legacy:true,ids:r.ids,y:r.year,m:r.month,to:r.month_to||r.month,t:a[0],n:a[1]})})});
- rows=all.filter(r=>r.registered||r.transmitted||r.returned||Number(r.net));
- people=[];if(prof&&prof.role=="admin"){const q=await sb.from("profiles").select("*").order("created_at");people=q.data||[]}
-}
-function render(){
- document.body.classList.toggle("lg",!me||recovery);document.body.classList.toggle("db",!!me&&!recovery);
- if(recovery)return recoveryScr();
- if(!me)return authScr();
- if(!prof){$("#app").innerHTML='<div class="card" style="max-width:380px;margin:8vh auto 0"><h1>Account not available</h1><p>Your account was removed or is not ready.</p><button style="width:100%" onclick="logout()">Log out</button></div>';return}
- dash();
-}
-function go(s){scr=s;admErr="";render()}
-function authScr(){
- const t='<h1>YAKAP System '+BADGE+'</h1><div style="height:14px"></div>',ta=t.replace("OUTPUT","ADMIN");let f;
- if(scr=="reg")f=t+`<label>Full name</label><input id="rn" ${I}><label>Gmail</label><input id="ru" type="email" placeholder="name@gmail.com" ${I}><label>Password (6+ characters)</label><input id="rp" type="password" ${I}><label>Confirm password</label><input id="rq" type="password" ${I}><div class="err" id="er"></div><button style="width:100%" onclick="doReg()">Create account</button><button class="g" style="width:100%;margin-top:8px" onclick="go('login')">Back to log in</button>`;
- else if(scr=="forgot")f=t+`<p style="margin:0 0 10px;color:var(--mut)">Enter your Gmail and tap Send OTP. A 6-digit one-time PIN is emailed to you.</p><label>Gmail</label><input id="fe" type="email" placeholder="name@gmail.com" ${I}><button class="g" style="width:100%;margin:-2px 0 8px" onclick="sendCode()">Send OTP to my Gmail</button><div id="fm" style="color:#4ade80;font-weight:600;margin-bottom:6px"></div><label>6-digit OTP</label><input id="fc" inputmode="numeric" maxlength="10" placeholder="123456" ${I} autocomplete="one-time-code"><label>New password (6+ characters)</label><input id="fp" type="password" ${I} autocomplete="new-password"><label>Confirm new password</label><input id="fq" type="password" style="width:100%;margin-bottom:6px" autocomplete="new-password"><div class="err" id="er"></div><button style="width:100%" onclick="doResetOtp()">Reset password</button><button class="g" style="width:100%;margin-top:8px" onclick="go('login')">Back to log in</button>`;
- else if(scr=="areg")f=ta+`<label>Full name</label><input id="rn" ${I}><label>Gmail</label><input id="ru" type="email" placeholder="name@gmail.com" ${I}><label>Password (6+ characters)</label><input id="rp" type="password" ${I}><label>Confirm password</label><input id="rq" type="password" ${I}><div class="err" id="er"></div><button style="width:100%" onclick="doAdminReg()">Create administrator account</button><button class="g" style="width:100%;margin-top:8px" onclick="go('adm')">Back</button>`;
- else if(scr=="adm")f=ta+`<label>Gmail</label><input id="lu" type="email" placeholder="name@gmail.com" ${I} autocomplete="username"><label>Administrator password</label><input id="lp" type="password" style="width:100%;margin-bottom:6px" autocomplete="current-password"><div class="err" id="er">${esc(admErr)}</div><button style="width:100%" onclick="doAdmin()">Log in as administrator</button><button class="g" style="width:100%;margin-top:8px" onclick="go('areg')">Create administrator account</button><button class="g" style="width:100%;margin-top:8px" onclick="go('login')">Back to log in</button>`;
- else{f=t+`<label>Gmail</label><input id="lu" type="email" ${I} autocomplete="username"><label>Password</label><input id="lp" type="password" style="width:100%;margin-bottom:6px" autocomplete="current-password"><div id="ok" style="color:#4ade80;font-weight:600">${esc(okmsg)}</div><div style="text-align:right;margin:0 0 6px"><a href="#" onclick="go('forgot');return false" style="color:var(--pr);font-size:13px">Forgot password?</a></div><div class="err" id="er"></div><button style="width:100%" onclick="doLogin()">Log in</button><button class="g" style="width:100%;margin-top:8px" onclick="go('adm')">Administrator login</button>`;okmsg=""}
- $("#app").innerHTML='<div class="card" style="max-width:380px;margin:8vh auto 0">'+f+'</div>';
-}
-function recoveryScr(){
- $("#app").innerHTML=`<div class="card" style="max-width:380px;margin:8vh auto 0"><h1>New password</h1><label>New password (6+ characters)</label><input id="np" type="password" ${I}><label>Confirm new password</label><input id="nq" type="password" ${I}><div class="err" id="er"></div><button style="width:100%" onclick="doNewPw()">Change password</button></div>`;
-}
-document.addEventListener("keydown",e=>{if(e.key=="Enter"&&(!me||recovery)){const b=document.querySelector(".card button:not(.g)");if(b)b.click()}});
 async function doLogin(){
- const em=$("#lu").value.trim().toLowerCase(),pw=$("#lp").value,er=$("#er");
- if(!em||!pw){er.textContent="Enter your Gmail and password.";return}
- const {data,error}=await sb.auth.signInWithPassword({email:em,password:pw});
- if(error){er.textContent=/confirm/i.test(error.message)?"Please confirm your email first (check your inbox).":"Wrong email or password.";return}
- me=data.user;await loadAll();toast="✓ Successfully logged in. Welcome, "+(prof?prof.name:"")+"!";render();
+ const em=$("#lu").value.trim().toLowerCase(),pw=$("#lp").value,err=$("#le");
+ if(!em||!pw){err.textContent="Enter your username and password.";return}
+ const acc=users.find(x=>x.u.toLowerCase()===em);
+ if(acc){if(acc.p!==pw){err.textContent="Wrong password. Try again.";return}me=acc;welcome=true;render();return}
+ if(DB&&UID){try{
+  const sn=await DB.doc("data/users/"+UID+"/profile").get();
+  if(sn.exists){const d=sn.data();
+   if(d.email===em&&d.ph===await hash(pw,em)){me={u:em,name:d.name,role:"user"};welcome=true;render();return}
+   err.textContent="Wrong email or password.";return}
+ }catch(e){}}
+ err.textContent="No account found. Click Create account.";
 }
-async function doAdmin(){
- admErr="";const em=$("#lu").value.trim().toLowerCase(),pw=$("#lp").value,er=$("#er");
- if(!em||!pw){er.textContent="Enter the administrator Gmail and password.";return}
- const {data,error}=await sb.auth.signInWithPassword({email:em,password:pw});
- if(error){er.textContent="Wrong email or password.";return}
- me=data.user;await loadAll();
- if(!prof||prof.role!="admin"){await sb.auth.signOut();me=null;prof=null;admErr="This account is not an administrator.";scr="adm";render();return}
- toast="✓ Successfully logged in as administrator. Welcome, "+prof.name+"!";render();
+function removeMe(){
+ ask("Enter your password to remove your account and delete it from this system.",async v=>{
+  try{
+   const li=users.findIndex(x=>x.u===me.u&&x.role!="admin");let ok=false;
+   if(li>=0){if(users[li].p===v){users.splice(li,1);save("yk_users",users);ok=true}}
+   else if(DB&&UID){const ref=DB.doc("data/users/"+UID+"/profile"),sn=await ref.get();
+    if(sn.exists&&sn.data().ph===await hash(v,sn.data().email)){await ref.delete();ok=true}}
+   if(!ok){toast="Wrong password. Your account was not removed.";dash();return}
+   me=null;loginMsg="\u2713 Your account was removed successfully. ";render();
+  }catch(e){toast="Could not remove the account. Try again.";dash()}
+ },true,"Remove account");
 }
-async function doAdminReg(){
- const n=$("#rn").value.trim(),em=$("#ru").value.trim().toLowerCase(),p=$("#rp").value,q=$("#rq").value,er=$("#er");
- if(!n||!em||!p){er.textContent="Fill all fields.";return}
- if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){er.textContent="Enter a valid email, e.g. name@gmail.com";return}
- if(p.length<6){er.textContent="Password must be 6+ characters.";return}
+function gmOf(u){const a=users.find(x=>x.u.toLowerCase()===String(u).toLowerCase());return a&&a.email?a.email:""}
+function mailFor(em,code){return 'mailto:'+encodeURIComponent(em)+'?subject='+encodeURIComponent('YAKAP System password reset code')+'&body='+encodeURIComponent('Your password reset code is '+code+'. Open the YAKAP System, click Forgot password?, and enter this code with your username.')}
+function delOtp(id){const o=load("yk_otp",{});delete o[id];save("yk_otp",o);otps=otps.filter(x=>x.id!==id);if(DB)DB.doc("otp/"+id).delete().catch(()=>{});toast="\u2713 Request dismissed.";dash()}
+async function sendOtp(){
+ const em=$("#fe").value.trim().toLowerCase(),er=$("#fr"),fm=$("#fm");fm.textContent="";er.textContent="";
+ if(!em){er.textContent="Enter your username first.";return}
+ const code=String(crypto.getRandomValues(new Uint32Array(1))[0]%900000+100000),id=await hash("reset",em),exp=Date.now()+600000,h=await hash(code,em);
+ if(DB){try{await DB.doc("resets/"+id).set({h,exp});await DB.doc("otp/"+id).set({email:em,code,exp,ts:Date.now()})}catch(e){er.textContent="Could not send the OTP. Ask the administrator for Contributor access or to generate a code for you.";return}}
+ else{const r=load("yk_resets",{});r[id]={h,exp};save("yk_resets",r);const o=load("yk_otp",{});o[id]={id,email:em,code,exp,ts:Date.now()};save("yk_otp",o)}
+ fm.textContent="\u2713 One-time PIN sent successfully. The administrator received it and will give you the 6-digit code (valid 10 minutes). Enter it below.";
+}
+function createAdmin(){
+ const n=$("#xn").value.trim(),u=$("#xu").value.trim(),p=$("#xp").value,q=$("#xq").value,er=$("#xe");
+ if(users.filter(x=>x.role=="admin").length>=4){er.textContent="Limit reached: only 4 administrator accounts are allowed.";return}
+ if(!n||!u||p.length<4){er.textContent="Fill all fields (password 4+ characters).";return}
+ if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(u)){er.textContent="Enter a valid email, e.g. name@gmail.com";return}
  if(p!==q){er.textContent="Passwords do not match.";return}
- const {data,error}=await sb.auth.signUp({email:em,password:p,options:{data:{name:n,want_admin:true}}});
- if(error){er.textContent=error.message;return}
- if(data.session){me=data.user;await loadAll();
-  toast=prof&&prof.role=="admin"?"✓ Administrator account created successfully. You are now logged in.":"✓ Account created. The administrator must approve you as an administrator. Until then you can view only.";render()}
- else{scr="adm";admErr="";okmsg="✓ Account created. Check your email to confirm it, then log in.";render()}
+ if(users.some(x=>x.u.toLowerCase()===u.toLowerCase())){er.textContent="That ID is already used.";return}
+ const a={u,p,name:n,role:"admin"};users.push(a);save("yk_users",users);toast="\u2713 Administrator account created successfully. You are now logged in.";me=a;welcome=true;showAR=false;render();
 }
-async function doReg(){
- const n=$("#rn").value.trim(),em=$("#ru").value.trim().toLowerCase(),p=$("#rp").value,q=$("#rq").value,er=$("#er");
- if(!n||!em||!p){er.textContent="Fill all fields.";return}
- if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){er.textContent="Enter a valid email, e.g. name@gmail.com";return}
- if(p.length<6){er.textContent="Password must be 6+ characters.";return}
- if(p!==q){er.textContent="Passwords do not match.";return}
- const {data,error}=await sb.auth.signUp({email:em,password:p,options:{data:{name:n}}});
- if(error){er.textContent=error.message;return}
- if(data.session){me=data.user;await loadAll();toast="✓ Account created successfully. You are now logged in.";render()}
- else{scr="login";okmsg="✓ Account created. Check your email to confirm it, then log in.";render()}
+function adminLogin(){
+ const u=$("#aid").value.trim().toLowerCase(),p=$("#apw").value,er=$("#ae2");
+ if(!u||!p){er.textContent="Enter the administrator ID and password.";return}
+ const a=users.find(x=>x.role=="admin"&&x.u.toLowerCase()===u);
+ if(!a||a.p!==p){er.textContent="Wrong administrator ID or password.";return}
+ me=a;welcome=true;showAdm=false;render();
 }
-async function sendCode(){
- const em=$("#fe").value.trim().toLowerCase(),er=$("#er"),fm=$("#fm");fm.textContent="";er.textContent="";
- if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){er.textContent="Enter your Gmail first.";return}
- const {error}=await sb.auth.resetPasswordForEmail(em);
- if(error){er.textContent=error.message;return}
- fm.textContent="\u2713 One-time PIN sent successfully. Check your Gmail (and Spam) for the 6-digit code, then enter it below.";
+function migrate(R,E){let ch=false;for(let i=R.length-1;i>=0;i--){const r=R[i];
+ if(r.ers){E.push({id:Date.now()+Math.floor(Math.random()*1e9),y:r.y,m:r.m,to:r.to||r.m,t:"e",n:r.ers});r.ers=0;ch=true}
+ if(r.den){E.push({id:Date.now()+Math.floor(Math.random()*1e9),y:r.y,m:r.m,to:r.to||r.m,t:"d",n:r.den});r.den=0;ch=true}
+ if(!(r.reg||r.tx||r.net||r.ret)){R.splice(i,1);ch=true}}return ch}
+async function addEd(t,y,m,n,tm){
+ const ex=eds.find(e=>e.t==t&&e.y==y&&e.m==m);
+ if(ex){ex.n+=n;ex.to=Math.max(ex.to||ex.m,tm)}else eds.push({id:Date.now()+Math.floor(Math.random()*1e9),y,m,to:tm,t,n});
+ persist();return null;
 }
-async function doResetOtp(){
- const em=$("#fe").value.trim().toLowerCase(),cd=$("#fc").value.trim(),p1=$("#fp").value,p2=$("#fq").value,er=$("#er");
+async function delEd(e){eds=eds.filter(x=>x.id!==e.id);persist();return null}
+function openEd(){
+ const adm2=me.role=="admin"&&(canW||!DB),o=document.createElement("div");o.className="mo";
+ const inR=e=>e.y==year&&e.m>=mf&&e.m<=mt;
+ const draw=(t,msg)=>{
+  const R=eds.filter(e=>e.t==t&&inR(e)).sort((a,b)=>a.m-b.m),tot=R.reduce((a,e)=>a+e.n,0),nm=t=="e"?"Error":"Denied";
+  o.innerHTML='<div class="mb"><b style="font-size:16px">Error/Denied claims — '+per()+year+'</b><div style="display:flex;gap:8px;margin:10px 0"><button id="te" class="'+(t=="e"?"":"g")+'" style="flex:1">Error</button><button id="td" class="'+(t=="d"?"":"g")+'" style="flex:1">Denied</button></div><table style="min-width:0"><thead><tr><th>Month</th><th>Year</th><th>'+nm+'</th>'+(adm2?'<th></th>':'')+'</tr></thead><tbody>'+(R.length?R.map((e,i)=>'<tr><td>'+MO[e.m]+((e.to||e.m)>e.m?" – "+MO[e.to]:"")+'</td><td>'+e.y+'</td><td>'+num(e.n)+'</td>'+(adm2?'<td><button class="d" data-i="'+i+'">Delete</button></td>':'')+'</tr>').join(""):'<tr><td colspan="4">No entries.</td></tr>')+'</tbody><tfoot><tr><td colspan="2">Total '+nm.toLowerCase()+'</td><td>'+num(tot)+'</td>'+(adm2?'<td></td>':'')+'</tr></tfoot></table>'
+  +(adm2?'<div style="margin-top:14px;font-weight:600">Add '+nm.toLowerCase()+'</div><div class="row" style="margin-top:6px"><div><label>From month</label><select id="am">'+MO.map((x,i)=>'<option value="'+i+'">'+x+'</option>').join("")+'</select></div><div><label>To month (optional)</label><select id="amt"><option value="">Same month</option>'+MO.map((x,i)=>'<option value="'+i+'">'+x+'</option>').join("")+'</select></div><div><label>Year</label><input id="ay" type="number" value="'+year+'"></div><div><label>Count</label><input id="edn" type="number" min="1" placeholder="0"></div></div><button id="ad" style="width:100%;margin-top:8px">Add '+nm.toLowerCase()+'</button>':'')
+  +'<div id="am2" style="color:var(--pr);font-weight:600;margin-top:6px;min-height:18px">'+(msg||"")+'</div><div style="text-align:right;margin-top:6px"><button class="g" id="mk">Close</button></div></div>';
+  $("#te").onclick=()=>draw("e");$("#td").onclick=()=>draw("d");$("#mk").onclick=()=>o.remove();
+  o.querySelectorAll("button.d").forEach(b=>b.onclick=async()=>{const er=await delEd(R[+b.dataset.i]);await dash();draw(t,er?(er.message||"Could not delete."):"\u2713 Deleted successfully.")});
+  if(adm2)$("#ad").onclick=async()=>{
+   const y=+$("#ay").value,m=+$("#am").value,n=+$("#edn").value,tm=$("#amt").value===""?m:+$("#amt").value,em=$("#am2");
+   if(tm<m){em.style.color="var(--dg)";em.textContent="To month must be the same as or after From month.";return}
+   if(!y||!(n>0)){em.style.color="var(--dg)";em.textContent="Enter a year and a count above 0.";return}
+   let er;try{er=await addEd(t,y,m,n,tm)}catch(x){er=x}
+   if(er){em.style.color="var(--dg)";em.textContent=er.message||"Could not add.";return}
+   year=y;mf=Math.min(mf,m);mt=Math.max(mt,tm);await dash();draw(t,"\u2713 "+nm+" added successfully.");
+  };
+ };
+ document.body.appendChild(o);draw("e");
+}
+function openDet(k){if(k=="ed")return openEd();
+ const L={reg:["Registered in YAKAP system",r=>r.reg,num],tx:["Successfully transmitted",r=>r.tx,num],ret:["Returned claims",r=>r.ret||0,num],ed:["Error/Denied claims",r=>(r.ers||0)+(r.den||0),num],net:["Net amount",r=>r.net,peso]}[k];
+ const R=yrRecs().slice().sort((a,b)=>a.m-b.m),tot=R.reduce((a,r)=>a+L[1](r),0);
+ note('<b style="font-size:16px">'+L[0]+' \u2014 '+per()+year+'</b><table style="min-width:0;margin-top:10px">'+(R.length?R.map(r=>'<tr><td>'+lbl(r)+'</td><td>'+L[2](L[1](r))+(k=='ed'?' <small style="color:var(--mut)">(Error '+num(r.ers)+' · Denied '+num(r.den)+')</small>':'')+'</td></tr>').join(""):'<tr><td colspan="2">No entries.</td></tr>')+'<tr style="font-weight:700"><td>Total</td><td>'+L[2](tot)+'</td></tr>'+(k=='ed'?'<tr><td>Error</td><td>'+num(R.reduce((a,r)=>a+(r.ers||0),0))+'</td></tr><tr><td>Denied</td><td>'+num(R.reduce((a,r)=>a+(r.den||0),0))+'</td></tr>':'')+'</table>');
+}
+function note(html){
+ const o=document.createElement("div");o.className="mo";
+ o.innerHTML='<div class="mb"><div style="margin:0 0 14px">'+html+'</div><div style="text-align:right"><button id="mk">OK</button></div></div>';
+ document.body.appendChild(o);$("#mk").onclick=()=>o.remove();
+}
+async function genCode(){
+ const em=$("#gp").value.trim().toLowerCase();
+ if(!em){$("#gm").style.color="var(--dg)";$("#gm").textContent="Create a personnel account first.";return}
+ const code=String(crypto.getRandomValues(new Uint32Array(1))[0]%900000+100000),id=await hash("reset",em),rec={h:await hash(code,em),exp:Date.now()+900000};
+ let saved=false;
+ if(DB&&canW){try{await DB.doc("resets/"+id).set(rec);saved=true}catch(e){}}
+ if(!saved){const r=load("yk_resets",{});r[id]=rec;save("yk_resets",r)}
+ $("#ue").textContent="";$("#gm").style.color="#4ade80";$("#gm").textContent="\u2713 Reset code generated successfully.";
+ note('<b>Reset code for '+esc(em)+'</b><div style="font-size:34px;font-weight:700;letter-spacing:6px;margin:10px 0;color:var(--pr)">'+code+'</div>'+(gmOf(em)?'<a href="'+mailFor(gmOf(em),code)+'" target="_blank" rel="noopener" style="display:inline-block;background:var(--pr);color:var(--prt);padding:9px 14px;border-radius:8px;font-weight:600;text-decoration:none;margin-bottom:10px">Send code to '+esc(gmOf(em))+'</a><br>':'')+'Give this code to the user. It works for 15 minutes.');
+}
+async function doReset(){
+ const em=$("#fe").value.trim().toLowerCase(),cd=$("#fc").value.trim(),p1=$("#fp").value,p2=$("#fq").value,er=$("#fr");
  if(!em||!cd||!p1){er.textContent="Fill all fields.";return}
- if(p1.length<6){er.textContent="Password must be 6+ characters.";return}
+ if(p1.length<4){er.textContent="Password must be 4+ characters.";return}
  if(p1!==p2){er.textContent="Passwords do not match.";return}
- inReset=true;
- const v=await sb.auth.verifyOtp({email:em,token:cd,type:"recovery"});
- if(v.error){inReset=false;er.textContent="Invalid or expired OTP. Tap Send OTP again to get a new one.";return}
- const u=await sb.auth.updateUser({password:p1});
- if(u.error){inReset=false;er.textContent=u.error.message;return}
- await sb.auth.signOut();inReset=false;me=null;prof=null;scr="login";
- okmsg="\u2713 Password reset successfully. Log in with your new password.";render();
+ const id=await hash("reset",em);let rec=null;
+ try{if(DB){const sn=await DB.doc("resets/"+id).get();if(sn.exists)rec=sn.data()}}catch(e){}
+ if(!rec)rec=load("yk_resets",{})[id]||null;
+ if(!rec){er.textContent="No reset code found for this email. Ask the administrator to generate a code for this exact email.";return}
+ if(Date.now()>rec.exp||rec.h!==await hash(cd,em)){er.textContent="Invalid or expired code. Ask the administrator for a new code.";return}
+ const acc=users.find(x=>x.u.toLowerCase()===em);let ok=false;
+ if(acc){acc.p=p1;save("yk_users",users);ok=true}
+ else if(DB&&UID){try{const ref=DB.doc("data/users/"+UID+"/profile"),sn=await ref.get();
+  if(sn.exists&&sn.data().email===em){await ref.set({...sn.data(),ph:await hash(p1,em)});ok=true}}catch(e){}}
+ if(!ok){er.textContent="No account found for this email.";return}
+ showFg=false;loginMsg="\u2713 Password reset successfully. Log in with your new password.";login();
 }
-async function doForgot(){
- const em=$("#fe").value.trim().toLowerCase(),er=$("#er");
- if(!em){er.textContent="Enter your Gmail.";return}
- const {error}=await sb.auth.resetPasswordForEmail(em,{redirectTo:location.origin+location.pathname});
- if(error){er.textContent=error.message;return}
- scr="login";okmsg="✓ A password reset link was sent to your email. Open it to set a new password.";render();
+async function hash(p,e){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(e+"|"+p));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}
+async function regUser(){
+ const n=$("#rn").value.trim(),u=$("#ru").value.trim(),p=$("#rp").value,er=$("#re");
+ if(!n||!u||p.length<4){er.textContent="Fill all fields (password 4+ characters).";return}
+ if(/\s/.test(u)){er.textContent="Username cannot contain spaces.";return}
+ if($("#rq").value!==p){er.textContent="Passwords do not match. Type the same password in both boxes.";return}
+ if(users.some(x=>x.u.toLowerCase()===u.toLowerCase())){er.textContent="Username already taken.";return}
+ const a={u,p,name:n,role:"user"};users.push(a);save("yk_users",users);toast="\u2713 Account created successfully. You are now logged in (view only).";me=a;welcome=true;showReg=false;render();
 }
-async function doNewPw(){
- const p=$("#np").value,q=$("#nq").value,er=$("#er");
- if(p.length<6){er.textContent="Password must be 6+ characters.";return}
- if(p!==q){er.textContent="Passwords do not match.";return}
- const {error}=await sb.auth.updateUser({password:p});
- if(error){er.textContent=error.message;return}
- recovery=false;const {data}=await sb.auth.getSession();me=data.session?data.session.user:null;if(me)await loadAll();
- toast="✓ Password changed successfully.";history.replaceState(null,"",location.pathname);render();
-}
-async function logout(){await sb.auth.signOut();me=null;prof=null;scr="login";render()}
-function segs(L){const out=[];for(let i=0;i<12;){const r=L.find(x=>x.month<=i&&(x.month_to||x.month)>=i);
- if(r){const e=Math.max(r.month_to||r.month,i);out.push({s:i,e,v:L.filter(x=>x.month==r.month).reduce((a,x)=>a+Number(x.net),0),l:MO[i]+(e>i?" – "+MO[e]:"")});i=e+1}
+function yrAll(){return recs.filter(r=>r.y==year)}
+function yrRecs(){return recs.filter(r=>r.y==year&&((r.m>=mf&&r.m<=mt)))}
+function segs(L){const out=[];for(let i=0;i<12;){const r=L.find(x=>x.m<=i&&(x.to||x.m)>=i);
+ if(r){const e=Math.max(r.to||r.m,i);out.push({s:i,e,v:L.filter(x=>x.m==r.m).reduce((a,x)=>a+x.net,0),l:MO[i]+(e>i?" – "+MO[e]:"")});i=e+1}
  else{out.push({s:i,e:i,v:0,l:MO[i]});i++}}return out}
 function dash(){
- const adm=prof.role=="admin";
- const yrs=[...new Set([...rows.map(r=>r.year),new Date().getFullYear()])].sort((a,b)=>b-a);if(!yrs.includes(+year))yrs.unshift(+year);
- const yr=rows.filter(r=>r.year==year),R=yr.filter(r=>(r.month>=mf&&r.month<=mt));
- const T=R.reduce((a,r)=>({reg:a.reg+r.registered,tx:a.tx+r.transmitted,ret:a.ret+r.returned,den:a.den+r.denied,ers:a.ers+(r.errs||0),net:a.net+Number(r.net)}),{reg:0,tx:0,ret:0,den:0,ers:0,net:0});
+ const years=[...new Set([...recs.map(r=>r.y),new Date().getFullYear()])].sort((a,b)=>b-a);
+ if(!years.includes(+year))years.unshift(+year);
+ const R=yrRecs(),T=R.reduce((a,r)=>({reg:a.reg+r.reg,tx:a.tx+r.tx,net:a.net+r.net,ret:a.ret+(r.ret||0),den:a.den+(r.den||0),ers:a.ers+(r.ers||0)}),{reg:0,tx:0,net:0,ret:0,den:0,ers:0});
  const EN=eds.filter(e=>e.y==year&&e.m>=mf&&e.m<=mt).reduce((a,e)=>a+e.n,0);
- const sg=segs(yr),mx=Math.max(...sg.map(g=>g.v),1);
- document.body.dataset.page=adm?page:"dash";
- const tk=toast?`<div class="card" id="tb" style="border-color:var(--pr);color:var(--pr);font-weight:600">${esc(toast)}</div>`:"";toast="";
- setTimeout(()=>{const e=$("#tb");if(e)e.remove()},4000);
- const card=(k,l,v)=>k=="ed"?`<div class="k" style="cursor:pointer" onclick="openDet('ed')"><small>${l}</small><b>${v}</b><small style="color:var(--pr)">Click to see inside ›</small></div>`:`<div class="k"><small>${l}</small><b>${v}</b></div>`;
- $("#app").innerHTML=tk+`<div class="top" style="flex-direction:column;align-items:stretch;gap:8px">
- <div style="display:flex;gap:8px;justify-content:flex-start;flex-wrap:wrap">${adm?`<button class="g" onclick="page=page=='prof'?'dash':'prof';render()">${page=="prof"?"← Dashboard":"Profile"}</button>`:`<button class="g" style="color:var(--dg)" onclick="removeMe()">Remove my account</button>`}<button class="g" onclick="logout()">Log out</button></div>
- <div style="text-align:center"><h1>YAKAP System</h1><small style="color:var(--mut)">${esc(prof.name)} · ${adm?"Administrator":"Personnel (view only)"}</small></div></div>
+ const rate=T.reg?(T.tx/T.reg*100).toFixed(1):"0.0";
+ const sg=segs(yrAll()),mx=Math.max(...sg.map(g=>g.v),1);
+ const isA=me.role=="admin",adm=isA&&(canW||!DB);document.body.dataset.page=isA?page:"dash";const mm=msg;msg="";const am=acctMsg;acctMsg="";const reqs=[...otps,...Object.values(load("yk_otp",{}))].filter(o=>o.exp>Date.now()).sort((a,b)=>b.ts-a.ts);const warn=isA&&me.p==="admin123"?`<div class="card" style="border-color:var(--dg);color:var(--dg)">Your administrator password is still the default. Click \u201cChange password\u201d in the Accounts section below.</div>`:"";const tk=toast?`<div class="card" id="tb" style="border-color:var(--pr);color:var(--pr);font-weight:600">${toast}</div>`:"";toast="";setTimeout(()=>{const e=$("#tb");if(e)e.remove()},4000);
+ const ok=welcome?`<div class="card" id="wb" style="border-color:var(--pr);color:var(--pr);font-weight:600">✓ Successfully logged in. Welcome, ${esc(me.name)}!</div>`:"";welcome=false;setTimeout(()=>{const e=$("#wb");if(e)e.remove()},4000);
+ $("#app").innerHTML=`
+ ${ok}${tk}${warn}<div class="top" style="flex-direction:column;align-items:stretch;gap:8px">
+ <div style="display:flex;gap:8px;justify-content:flex-start;flex-wrap:wrap">${isA?`<button class="g" onclick="page=page=='prof'?'dash':'prof';dash()">${page=="prof"?"← Dashboard":"Profile"+(reqs.length?" ("+reqs.length+")":"")}</button>`:`<button class="g" style="color:var(--dg)" onclick="removeMe()">Remove my account</button>`}<button class="g" onclick="me=null;render()">Log out</button></div>
+ <div style="text-align:center"><h1>YAKAP System</h1><small style="color:var(--mut)">${esc(me.name)} · ${isA?"Administrator":"Personnel (view only)"}</small></div></div>
  <div class="kpis pg-d">
- ${card("reg","Total registered in YAKAP system",num(T.reg))}${card("tx","Total successfully transmitted",num(T.tx))}${card("net","Net amount",peso(T.net))}
- <div class="k"><label>Calendar year / From – To month</label><div style="display:flex;gap:6px;flex-wrap:wrap"><select style="flex:1 1 100%;min-width:0" onchange="year=+this.value;render()">${yrs.map(y=>`<option ${y==year?"selected":""}>${y}</option>`).join("")}</select><select title="From month" style="flex:1;min-width:0" onchange="mf=+this.value;if(mt<mf)mt=mf;render()">${MO.map((x,i)=>`<option value="${i}" ${i==mf?"selected":""}>${x}</option>`).join("")}</select><select title="To month" style="flex:1;min-width:0" onchange="mt=+this.value;if(mf>mt)mf=mt;render()">${MO.map((x,i)=>`<option value="${i}" ${i==mt?"selected":""}>${x}</option>`).join("")}</select></div></div>
- ${card("ret","Total returned claims",num(T.ret))}${card("ed","Total error/denied claims",num(EN))}</div>
+ <div class="k"><small>Total registered in YAKAP system</small><b>${num(T.reg)}</b></div>
+ <div class="k"><small>Total successfully transmitted</small><b>${num(T.tx)}</b></div>
+ <div class="k"><small>Net amount</small><b>${peso(T.net)}</b></div>
+ <div class="k"><label>Calendar year / From – To month</label><div style="display:flex;gap:6px;flex-wrap:wrap"><select style="flex:1 1 100%;min-width:0" onchange="year=+this.value;dash()">${years.map(y=>`<option ${y==year?"selected":""}>${y}</option>`).join("")}</select><select title="From month" style="flex:1;min-width:0" onchange="mf=+this.value;if(mt<mf)mt=mf;dash()">${MO.map((x,i)=>`<option value="${i}" ${i==mf?"selected":""}>${x}</option>`).join("")}</select><select title="To month" style="flex:1;min-width:0" onchange="mt=+this.value;if(mf>mt)mf=mt;dash()">${MO.map((x,i)=>`<option value="${i}" ${i==mt?"selected":""}>${x}</option>`).join("")}</select></div></div>
+ <div class="k"><small>Total returned claims</small><b>${num(T.ret)}</b></div>
+ <div class="k" style="cursor:pointer" onclick="openDet('ed')"><small>Total error/denied claims</small><b>${num(EN)}</b><small style="color:var(--pr)">Click to see inside ›</small></div></div>
  <div class="card pg-d"><h2>Monthly net amount — ${year}</h2><div class="chart" style="display:grid;grid-template-columns:repeat(12,minmax(0,1fr))">${sg.map(g=>`<div class="col" style="grid-column:${g.s+1}/${g.e+2}" title="${g.l}: ${peso(g.v)}"><i style="height:${g.v/mx*100}%"></i></div>`).join("")}</div><div class="lb" style="display:grid;grid-template-columns:repeat(12,minmax(0,1fr))">${sg.map(g=>`<span style="grid-column:${g.s+1}/${g.e+2}">${g.l}</span>`).join("")}</div></div>
  ${adm?`<div class="card pg-d"><h2>Add entry</h2><div class="row">
  <div><label>Calendar year</label><input id="ey" type="number" value="${year}"></div>
@@ -207,120 +250,77 @@ function dash(){
  <div><label>Successfully transmitted</label><input id="et" type="number" min="0" placeholder="0"></div>
  <div><label>Returned claims</label><input id="eret" type="number" min="0" placeholder="0"></div>
  <div><label>Net amount (₱)</label><input id="en" type="number" min="0" step="0.01" placeholder="0.00"></div>
- <button onclick="addRec()">Add</button></div><div class="err" id="ae"></div></div>`:""}
- <div class="card pg-d"><div class="top" style="margin:0 0 8px"><h2 style="margin:0">Output — ${per()}${year}</h2><div style="display:flex;gap:8px"><button class="g" onclick="csv()">Export CSV</button>${adm?`<button class="g" style="color:var(--dg)" onclick="delAll()">Delete all data</button>`:""}</div></div>
+ <button onclick="addRec()">Add</button></div><div class="err" id="ae" style="${mm.startsWith("✓")?"color:var(--pr);font-weight:600":""}">${mm}</div></div>`:""}
+  <div class="card pg-d"><div class="top" style="margin:0 0 8px"><h2 style="margin:0">Output — ${per()}${year}</h2><div style="display:flex;gap:8px"><button class="g" onclick="csv()">Export CSV</button>${adm?`<button class="g" style="color:var(--dg)" onclick="delAll()">Delete all data</button>`:""}</div></div>
  <div class="sc"><table><thead><tr><th>Month</th><th>Registered</th><th>Transmitted</th><th>Returned</th><th>Net amount</th>${adm?"<th></th>":""}</tr></thead><tbody>
- ${R.length?R.slice().sort((a,b)=>a.month-b.month).map(r=>`<tr><td>${lbl(r)}</td><td>${num(r.registered)}</td><td>${num(r.transmitted)}</td><td>${num(r.returned)}</td><td>${peso(r.net)}</td>${adm?`<td><button class="d" onclick="delRec(${r.id})">Delete</button></td>`:""}</tr>`).join(""):`<tr><td colspan="6" style="text-align:center;color:var(--mut)">No entries.</td></tr>`}
+ ${R.length?R.sort((a,b)=>a.m-b.m).map(r=>`<tr><td>${lbl(r)}</td><td>${num(r.reg)}</td><td>${num(r.tx)}</td><td>${num(r.ret)}</td><td>${peso(r.net)}</td>${adm?`<td><button class="d" onclick="delRec(${r.id})">Delete</button></td>`:""}</tr>`).join(""):`<tr><td colspan="6" style="text-align:center;color:var(--mut)">No entries for ${year}.</td></tr>`}
  </tbody><tfoot><tr><td>Total</td><td>${num(T.reg)}</td><td>${num(T.tx)}</td><td>${num(T.ret)}</td><td>${peso(T.net)}</td>${adm?"<td></td>":""}</tr></tfoot></table></div></div>
- ${adm?`<div class="card pg-p"><h2>Administrator Profile — Accounts</h2><p style="color:var(--mut);margin:0 0 8px">The first account created is the administrator. Change roles here.</p><div style="margin-bottom:12px"><b>Share links</b><label style="margin-top:6px">Link to send to personnel (they log in with the Gmail and password you add below)</label><input readonly onclick="this.select()" style="width:100%" value="${esc(shareLink())}"></div><div style="margin-bottom:14px"><b>Add account for personnel</b><div class="row" style="margin-top:6px"><div><label>Full name</label><input id="na"></div><div><label>Gmail</label><input id="ne" type="email" placeholder="name@gmail.com"></div><div><label>Password (6+ characters)</label><input id="np2" type="text"></div><button onclick="addAccount()">Add account</button></div><div id="nm" style="font-weight:600;margin-top:6px;min-height:18px"></div></div><div class="sc"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th></th></tr></thead><tbody>${people.map(p=>`<tr><td>${esc(p.name)}${p.admin_request&&p.role!="admin"?'<br><small style="color:var(--pr)">Requested administrator</small>':''}</td><td>${esc(p.email)}</td><td><select ${p.id==me.id?"disabled":""} onchange="setRole('${p.id}',this.value)"><option value="personnel" ${p.role=="personnel"?"selected":""}>Personnel</option><option value="admin" ${p.role=="admin"?"selected":""}>Administrator</option></select></td><td>${p.id==me.id?"":`<button class="d" onclick="rmPerson('${p.id}')">Remove</button>`}</td></tr>`).join("")}</tbody></table></div></div>`:""}`;
+ ${isA?`<div class="card pg-p"><h2>Administrator Profile — OTP &amp; Accounts</h2><div class="row">
+ <div><label>Full name</label><input id="an"></div><div><label>Username</label><input id="au"></div><div><label>Gmail (for OTP)</label><input id="ag" type="email" placeholder="name@gmail.com"></div><div><label>Password</label><input id="ap" type="text"></div><div><label>Account type</label><select id="ar"><option value="user">Personnel (view only)</option><option value="admin">Administrator</option></select></div><button onclick="addUser()">Create</button></div>
+ <div class="row" style="margin-top:10px"><div><label>Reset code for personnel</label><select id="gp">${users.filter(x=>x.role!="admin").map(x=>`<option value="${esc(x.u)}">${esc(x.name)} (${esc(x.u)})</option>`).join("")||'<option value="">No personnel accounts yet</option>'}</select></div><button onclick="genCode()">Generate reset code</button></div><div id="gm" style="color:#4ade80;font-weight:600;min-height:20px;margin-top:6px">${am}</div><div class="err" id="ue"></div>
+ <div style="margin:14px 0 4px;font-weight:700">Password reset requests (OTP received)</div>
+ ${reqs.length?reqs.map(o=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-top:1px solid var(--bd)"><span>${esc(o.email)}${gmOf(o.email)?`<br><small style="color:var(--pr)">${esc(gmOf(o.email))}</small>`:""}<br><small style="color:var(--mut)">valid until ${new Date(o.exp).toLocaleTimeString()}</small></span><b style="font-size:22px;letter-spacing:4px;color:var(--pr)">${esc(o.code)}</b><span>${gmOf(o.email)?`<a href="${mailFor(gmOf(o.email),o.code)}" target="_blank" rel="noopener" style="color:var(--pr);margin-right:8px">Send to Gmail</a>`:""}<button class="d" onclick="delOtp('${esc(o.id)}')">Dismiss</button></span></div>`).join(""):'<small style="color:var(--mut)">No requests yet.</small>'}
+ <div style="margin:14px 0 4px;font-weight:700">Accounts</div>
+ ${users.map(u=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid var(--bd)"><span>${esc(u.name)} <small style="color:var(--mut)">(${esc(u.u)}${u.role=="admin"?", admin":""})</small>${u.email?`<br><small style="color:var(--mut)">${esc(u.email)}</small>`:""}</span>${u.u!="admin"?`<button class="d" onclick="delUser('${esc(u.u)}')">Remove</button>`:`<button class="d" style="color:var(--pr)" onclick="chPw()">Change password</button>`}</div>`).join("")}</div>`:""}`;
 }
-function lbl(r){return MO[r.month]+((r.month_to||r.month)>r.month?" – "+MO[r.month_to]:"")+" "+r.year}
+function mergeDup(a){const m={};a.forEach(r=>{const k=r.y+"-"+r.m;if(m[k]){const x=m[k];x.to=Math.max(x.to||x.m,r.to||r.m);x.reg+=r.reg;x.tx+=r.tx;x.net+=r.net;x.ret=(x.ret||0)+(r.ret||0);x.den=(x.den||0)+(r.den||0);x.ers=(x.ers||0)+(r.ers||0)}else m[k]={...r}});return Object.values(m)}
+function lbl(r){return MO[r.m]+((r.to||r.m)>r.m?" – "+MO[r.to]:"")+" "+r.y}
 function per(){return mf==0&&mt==11?"":(mf==mt?MO[mf]:MO[mf]+" – "+MO[mt])+" "}
-async function addRec(){
- const v=id=>+$("#"+id).value,r={year:v("ey"),month:v("em"),registered:v("er"),transmitted:v("et"),returned:v("eret"),denied:0,errs:0,net:v("en")};
- const to=$("#emt").value;
- if(to!==""){if(+to<r.month){$("#ae").textContent="To month must be the same as or after From month.";return}if(+to>r.month)r.month_to=+to}
- if(!r.year||Object.values(r).some(x=>x<0)||!(r.registered||r.transmitted||r.returned||r.denied||r.errs||r.net)){$("#ae").textContent="Enter valid numbers.";return}
- const to2=r.month_to||r.month,ex=rows.find(x=>x.year==r.year&&x.month<=to2&&(x.month_to||x.month)>=r.month);
- if(ex){$("#ae").textContent="Error: "+lbl(ex)+" already has an entry. The same month cannot be added twice. Delete the existing entry first.";return}
- const {error}=await sb.from("claims").insert(r);
- if(error){$("#ae").textContent=error.message;return}
- year=r.year;await loadAll();toast="✓ Entry added successfully.";render();
+function addRec(){
+ const y=+$("#ey").value,m=+$("#em").value,to=$("#emt").value===""?+$("#em").value:+$("#emt").value,reg=+$("#er").value,tx=+$("#et").value,net=+$("#en").value,ret=+$("#eret").value,den=0,ers=0;
+ if(to<m){msg="To month must be the same as or after From month.";dash();return}
+ if(!y||reg<0||tx<0||net<0||ret<0||den<0||ers<0||(!reg&&!tx&&!net&&!ret&&!den&&!ers)){msg="Enter valid numbers.";dash();return}
+ const ex=recs.find(r=>r.y==y&&r.m<=to&&(r.to||r.m)>=m);
+ if(ex){$("#ae").style.color="";$("#ae").textContent="Error: "+lbl(ex)+" already has an entry. The same month cannot be added twice. Delete the existing entry first.";return}
+ recs.push({id:Date.now(),y,m,to,reg,tx,net,ret,den,ers});
+ persist();year=y;msg="✓ Entry added successfully.";dash();
 }
-function delRec(id){ask("Delete this entry?",async()=>{const {error}=await sb.from("claims").delete().in("id",(rows.find(x=>x.id==id)||{ids:[id]}).ids);await loadAll();toast=error?error.message:"✓ Entry deleted successfully.";render()})}
+function delRec(id){ask("Delete this entry?",()=>{recs=recs.filter(r=>r.id!=id);persist();toast="✓ Entry deleted successfully.";dash()})}
+function addUser(){
+ const n=$("#an").value.trim(),u=$("#au").value.trim(),p=$("#ap").value,gm=$("#ag").value.trim().toLowerCase();
+ if(!n||!u||p.length<4){$("#ue").textContent="Fill all fields (password 4+ characters).";return}
+ if($("#ar").value=="user"&&!gm){$("#ue").textContent="Enter the personnel Gmail. It is used to send the OTP if they forget their password.";return}
+ if(gm&&!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(gm)){$("#ue").textContent="Enter a valid Gmail, e.g. name@gmail.com";return}
+ if(users.some(x=>x.u.toLowerCase()===u.toLowerCase())){$("#ue").textContent="Username already exists.";return}
+ const role=$("#ar").value;if(role=="admin"&&users.filter(x=>x.role=="admin").length>=4){$("#ue").textContent="Limit reached: only 4 administrator accounts are allowed.";return}
+ users.push({u,p,name:n,role,email:gm});save("yk_users",users);toast="✓ Account added successfully.";acctMsg="✓ Account added successfully. "+n+" can now log in with the username "+u+".";dash();
+}
+function delUser(u){ask("Remove account "+u+"?",()=>{users=users.filter(x=>x.u!==u);save("yk_users",users);toast="✓ Account removed successfully.";dash()})}
+function chPw(){ask("New administrator password (4+ characters):",v=>{if(v&&v.length>=4){users.find(x=>x.u=="admin").p=v;save("yk_users",users);toast="✓ Password changed successfully."}else{toast="Password must be 4+ characters."}dash()},true)}
 function delAll(){
- const ids=rows.filter(r=>r.year==year&&((r.month>=mf&&r.month<=mt))).flatMap(r=>r.ids);
- if(!ids.length){toast="No data to delete.";render();return}
- ask("Delete all "+ids.length+" entries shown in the output ("+per()+year+")? This cannot be undone.",async()=>{const {error}=await sb.from("claims").delete().in("id",ids);const dd=eds.filter(e=>!e.legacy&&e.y==year&&e.m>=mf&&e.m<=mt).map(e=>e.id);if(dd.length)await sb.from("error_denied").delete().in("id",dd);await loadAll();toast=error?error.message:"✓ All data deleted successfully ("+ids.length+" entries).";render()});
-}
-async function addEd(t,y,m,n,tm){
- const ex=eds.find(e=>!e.legacy&&e.t==t&&e.y==y&&e.m==m);let error;
- if(ex){const to=Math.max(ex.to||ex.m,tm);({error}=await sb.from("error_denied").update({n:ex.n+n,...(to>m?{month_to:to}:{})}).eq("id",ex.id))}
- else{({error}=await sb.from("error_denied").insert({year:y,month:m,kind:t=="e"?"error":"denied",n,...(tm>m?{month_to:tm}:{})}))}
- if(error&&/error_denied|schema cache|relation|does not exist/i.test(error.message||"")){
-  const f=t=="e"?"errs":"denied",q=await sb.from("claims").select("*").eq("year",y).eq("month",m).order("id").limit(1);
-  if(q.error)return q.error;
-  const row=(q.data||[])[0];
-  if(row){const to=Math.max(row.month_to||row.month,tm);({error}=await sb.from("claims").update({[f]:(row[f]||0)+n,...(to>m?{month_to:to}:{})}).eq("id",row.id))}
-  else{({error}=await sb.from("claims").insert({year:y,month:m,registered:0,transmitted:0,returned:0,denied:0,errs:0,net:0,[f]:n,...(tm>m?{month_to:tm}:{})}))}
- }
- if(!error)await loadAll();
- return error;
-}
-async function delEd(e){
- const r=e.legacy?await sb.from("claims").update(e.t=="e"?{errs:0}:{denied:0}).in("id",e.ids):await sb.from("error_denied").delete().eq("id",e.id);
- if(!r.error)await loadAll();
- return r.error;
-}
-function openEd(){
- const adm2=prof.role=="admin",o=document.createElement("div");o.className="mo";
- const inR=e=>e.y==year&&e.m>=mf&&e.m<=mt;
- const draw=(t,msg)=>{
-  const R=eds.filter(e=>e.t==t&&inR(e)).sort((a,b)=>a.m-b.m),tot=R.reduce((a,e)=>a+e.n,0),nm=t=="e"?"Error":"Denied";
-  o.innerHTML='<div class="mb"><b style="font-size:16px">Error/Denied claims — '+per()+year+'</b><div style="display:flex;gap:8px;margin:10px 0"><button id="te" class="'+(t=="e"?"":"g")+'" style="flex:1">Error</button><button id="td" class="'+(t=="d"?"":"g")+'" style="flex:1">Denied</button></div><table style="min-width:0"><thead><tr><th>Month</th><th>Year</th><th>'+nm+'</th>'+(adm2?'<th></th>':'')+'</tr></thead><tbody>'+(R.length?R.map((e,i)=>'<tr><td>'+MO[e.m]+((e.to||e.m)>e.m?" – "+MO[e.to]:"")+'</td><td>'+e.y+'</td><td>'+num(e.n)+'</td>'+(adm2?'<td><button class="d" data-i="'+i+'">Delete</button></td>':'')+'</tr>').join(""):'<tr><td colspan="4">No entries.</td></tr>')+'</tbody><tfoot><tr><td colspan="2">Total '+nm.toLowerCase()+'</td><td>'+num(tot)+'</td>'+(adm2?'<td></td>':'')+'</tr></tfoot></table>'
-  +(adm2?'<div style="margin-top:14px;font-weight:600">Add '+nm.toLowerCase()+'</div><div class="row" style="margin-top:6px"><div><label>From month</label><select id="am">'+MO.map((x,i)=>'<option value="'+i+'">'+x+'</option>').join("")+'</select></div><div><label>To month (optional)</label><select id="amt"><option value="">Same month</option>'+MO.map((x,i)=>'<option value="'+i+'">'+x+'</option>').join("")+'</select></div><div><label>Year</label><input id="ay" type="number" value="'+year+'"></div><div><label>Count</label><input id="edn" type="number" min="1" placeholder="0"></div></div><button id="ad" style="width:100%;margin-top:8px">Add '+nm.toLowerCase()+'</button>':'')
-  +'<div id="am2" style="color:var(--pr);font-weight:600;margin-top:6px;min-height:18px">'+(msg||"")+'</div><div style="text-align:right;margin-top:6px"><button class="g" id="mk">Close</button></div></div>';
-  $("#te").onclick=()=>draw("e");$("#td").onclick=()=>draw("d");$("#mk").onclick=()=>o.remove();
-  o.querySelectorAll("button.d").forEach(b=>b.onclick=async()=>{const er=await delEd(R[+b.dataset.i]);await render();draw(t,er?(er.message||"Could not delete."):"\u2713 Deleted successfully.")});
-  if(adm2)$("#ad").onclick=async()=>{
-   const y=+$("#ay").value,m=+$("#am").value,n=+$("#edn").value,tm=$("#amt").value===""?m:+$("#amt").value,em=$("#am2");
-   if(tm<m){em.style.color="var(--dg)";em.textContent="To month must be the same as or after From month.";return}
-   if(!y||!(n>0)){em.style.color="var(--dg)";em.textContent="Enter a year and a count above 0.";return}
-   let er;try{er=await addEd(t,y,m,n,tm)}catch(x){er=x}
-   if(er){em.style.color="var(--dg)";em.textContent=er.message||"Could not add.";return}
-   year=y;mf=Math.min(mf,m);mt=Math.max(mt,tm);await render();draw(t,"\u2713 "+nm+" added successfully.");
-  };
- };
- document.body.appendChild(o);draw("e");
-}
-function openDet(k){if(k=="ed")return openEd();
- const L={reg:["Registered in YAKAP system",r=>r.registered,num],tx:["Successfully transmitted",r=>r.transmitted,num],ret:["Returned claims",r=>r.returned,num],ed:["Error/Denied claims",r=>(r.errs||0)+r.denied,num],net:["Net amount",r=>Number(r.net),peso]}[k];
- const R=rows.filter(r=>r.year==year&&((r.month>=mf&&r.month<=mt))).sort((a,b)=>a.month-b.month),tot=R.reduce((a,r)=>a+L[1](r),0);
- note('<b style="font-size:16px">'+L[0]+' — '+per()+year+'</b><table style="min-width:0;margin-top:10px">'+(R.length?R.map(r=>'<tr><td>'+lbl(r)+'</td><td>'+L[2](L[1](r))+(k=='ed'?' <small style="color:var(--mut)">(Error '+num(r.errs)+' · Denied '+num(r.denied)+')</small>':'')+'</td></tr>').join(""):'<tr><td colspan="2">No entries.</td></tr>')+'<tr style="font-weight:700"><td>Total</td><td>'+L[2](tot)+'</td></tr>'+(k=='ed'?'<tr><td>Error</td><td>'+num(R.reduce((a,r)=>a+(r.errs||0),0))+'</td></tr><tr><td>Denied</td><td>'+num(R.reduce((a,r)=>a+r.denied,0))+'</td></tr>':'')+'</table>');
-}
-async function addAccount(){
- const n=$("#na").value.trim(),em=$("#ne").value.trim().toLowerCase(),p=$("#np2").value,m=$("#nm");
- m.style.color="var(--dg)";
- if(!n||!em||!p){m.textContent="Fill the name, Gmail, and password.";return}
- if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){m.textContent="Enter a valid Gmail, e.g. name@gmail.com";return}
- if(p.length<6){m.textContent="Password must be 6+ characters.";return}
- const tmp=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{global:{fetch:myFetch},auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false,storageKey:"yk-tmp"}});
- const {data,error}=await tmp.auth.signUp({email:em,password:p,options:{data:{name:n}}});
- if(error){m.textContent=error.message;return}
- if(data.user&&data.user.identities&&data.user.identities.length==0){m.textContent="This Gmail is already registered.";return}
- await loadAll();
- toast="✓ Account added successfully. "+n+" can now log in with "+em+(data.session?".":". They must first confirm the email we sent (turn off Confirm email in Supabase to skip this).");render();
-}
-async function setRole(id,role){if(role=="admin"&&people.filter(x=>x.role=="admin").length>=4){await loadAll();toast="Limit reached: only 4 administrator accounts are allowed.";render();return}
- const {error}=await sb.from("profiles").update({role}).eq("id",id);await loadAll();toast=error?error.message:"✓ Role changed successfully.";render()}
-function rmPerson(id){ask("Remove this account from the system?",async()=>{const {error}=await sb.from("profiles").delete().eq("id",id);await loadAll();toast=error?error.message:"✓ Account removed successfully.";render()})}
-function removeMe(){
- ask("Enter your password to remove your account and disconnect your email from this system.",async v=>{
-  const {error}=await sb.auth.signInWithPassword({email:me.email,password:v});
-  if(error){toast="Wrong password. Your account was not removed.";render();return}
-  const r=await sb.rpc("delete_my_account");if(r.error){toast="Could not remove the account.";render();return}
-  await sb.auth.signOut();me=null;prof=null;scr="login";okmsg="✓ Your account was removed successfully. Your email is disconnected.";render();
- },true,"Remove account");
-}
-function csv(){
- const rs=[["Year","Month","Registered","Transmitted","Returned","Net Amount"],...rows.filter(r=>r.year==year&&((r.month>=mf&&r.month<=mt))).sort((a,b)=>a.month-b.month).map(r=>[r.year,MO[r.month],r.registered,r.transmitted,r.returned,r.net])];
- const b=new Blob([rs.map(r=>r.join(",")).join("\n")],{type:"text/csv"}),a=document.createElement("a");
- a.href=URL.createObjectURL(b);a.download="yakap-"+year+".csv";a.click();
+ const R=yrRecs();if(!R.length){toast="No data to delete.";dash();return}
+ const ids=R.map(r=>r.id),lbl=per()+year;
+ ask("Delete all "+ids.length+" entries shown in the output ("+lbl+")? This cannot be undone.",()=>{recs=recs.filter(r=>!ids.includes(r.id));eds=eds.filter(e=>!(e.y==year&&e.m>=mf&&e.m<=mt));persist();toast="✓ All data deleted successfully ("+ids.length+" entries).";dash()})
 }
 function ask(msg,yes,input,btn){
  const o=document.createElement("div");o.className="mo";
  o.innerHTML='<div class="mb"><p style="margin:0 0 12px;font-weight:600">'+msg+'</p>'+(input?'<input id="mi" type="password" style="width:100%;margin-bottom:12px">':'')+'<div style="display:flex;gap:8px;justify-content:flex-end"><button class="g" id="mn">Cancel</button><button id="my">'+(btn||(input?"Save":"Yes, delete"))+'</button></div></div>';
- document.body.appendChild(o);$("#mn").onclick=()=>o.remove();
+ document.body.appendChild(o);
+ $("#mn").onclick=()=>o.remove();
  $("#my").onclick=()=>{const v=input?$("#mi").value:null;o.remove();yes(v)};
 }
-function note(html){
- const o=document.createElement("div");o.className="mo";
- o.innerHTML='<div class="mb"><div style="margin:0 0 14px">'+html+'</div><div style="text-align:right"><button id="mk">OK</button></div></div>';
- document.body.appendChild(o);$("#mk").onclick=()=>o.remove();
+function csv(){
+ const rows=[["Year","Month","Registered","Transmitted","Returned","Net Amount"],...yrRecs().sort((a,b)=>a.m-b.m).map(r=>[r.y,MO[r.m]+((r.to||r.m)>r.m?" to "+MO[r.to]:""),r.reg,r.tx,r.ret||0,r.net])];
+ const b=new Blob([rows.map(r=>r.join(",")).join("\n")],{type:"text/csv"}),a=document.createElement("a");
+ a.href=URL.createObjectURL(b);a.download="yakap-"+year+".csv";a.click();
 }
-function showNet(){document.body.classList.add("lg");document.body.classList.remove("db");
- $("#app").innerHTML='<div class="card" style="max-width:420px;margin:8vh auto 0"><h1>Cannot reach the database</h1><p>Check that the Project URL is exactly the one in Supabase (https://xxxx.supabase.co), that your internet works, and that your Supabase project is not paused.</p><button style="width:100%" onclick="location.reload()">Try again</button><button class="g" style="width:100%;margin-top:8px" onclick="localStorage.removeItem(\'yk_cfg\');location.reload()">Change Supabase settings</button><p style="font-size:12px;color:var(--mut);margin-top:10px;word-break:break-all">Saved URL: '+esc(SUPABASE_URL)+'</p></div>'}
-window.addEventListener("unhandledrejection",e=>e.preventDefault());
-boot().catch(showNet);
-</script>
-</body></html>
+var DB=null,canW=false,UID=null,canD=null,otps=[];
+function persist(){save("yk_recs",recs);save("yk_eds",eds);if(DB&&canW)DB.doc("yakap/state").set({recs,eds}).catch(()=>{toast="Could not save to the shared database."})}
+function viewOnly(){me={u:"viewer",name:"Viewer",role:"viewer"};render()}
+(async()=>{try{
+ const u=await claude.use("user");
+ canW=u?((await u.canEdit())===true||(await u.isOwner())===true):false;
+ UID=u?await u.id():null;canD=u?await u.can("data.write"):null;
+ DB=await claude.use("db");
+ if(!DB)return;
+ const ref=DB.doc("yakap/state");
+ if(canW){DB.collection("otp").onSnapshot(q=>{const n=q.docs.map(d=>({id:d.id,...d.data()}));if(JSON.stringify(n)!==JSON.stringify(otps)){otps=n;if(me&&me.role=="admin")dash()}},()=>{})}
+ ref.onSnapshot(snap=>{
+  if(!snap.exists){if(canW&&recs.length)ref.set({recs,eds}).catch(()=>{});return}
+  const r=mergeDup(snap.data().recs||[]),e=(snap.data().eds||[]).map(x=>({...x}));migrate(r,e);
+  if(JSON.stringify([r,e])!==JSON.stringify([recs,eds])){recs=r;eds=e;save("yk_recs",recs);save("yk_eds",eds);if(me)dash()}
+ },()=>{});
+ if(me)dash();else if(!showReg&&!showFg&&!showAdm&&!showAR&&(!$("#lu")||!$("#lu").value))login();
+}catch(e){}})();
+render();
+</script></body></html>
