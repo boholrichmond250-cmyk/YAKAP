@@ -47,12 +47,14 @@ const num=n=>Number(n||0).toLocaleString("en-PH");
 let inReset=false,sb,me=null,prof=null,rows=[],eds=[],people=[],year=new Date().getFullYear(),mf=0,mt=11,page="dash",scr="login",admErr="",okmsg="",toast="",recovery=false;
 const BADGE='<span style="font-size:12px;background:var(--pr);color:var(--prt);padding:3px 8px;border-radius:6px;vertical-align:middle;margin-left:4px;letter-spacing:1px">OUTPUT</span>';
 const I='style="width:100%;margin-bottom:10px"';
+const myFetch=(...a)=>fetch(...a).catch(()=>{throw new TypeError("Cannot reach the database. Check the Project URL (it must end in .supabase.co), your internet, and that your Supabase project is not paused.")});
 async function boot(){
- try{const h=location.hash.slice(1).split("&"),c=h.find(x=>x.startsWith("cfg="));
+ try{if(location.hash=="#reset"){localStorage.removeItem("yk_cfg");history.replaceState(null,"",location.pathname)}
+  const h=location.hash.slice(1).split("&"),c=h.find(x=>x.startsWith("cfg="));
   if(c){localStorage.setItem("yk_cfg",atob(c.slice(4)));history.replaceState(null,"",location.pathname+(h.includes("signup")?"#signup":""))}
   if(SUPABASE_URL.startsWith("PASTE")){const o=JSON.parse(localStorage.getItem("yk_cfg")||"null");if(o){SUPABASE_URL=o.u;SUPABASE_KEY=o.k}}}catch(e){}
  if(SUPABASE_URL.startsWith("PASTE")){document.body.classList.add("lg");$("#app").innerHTML='<div class="card" style="max-width:420px;margin:8vh auto 0"><h1>Setup (one time)</h1><p style="color:var(--mut)">Paste your Supabase Project URL and key. No file editing needed.</p><label>Project URL</label><input id="cu" placeholder="https://xxxx.supabase.co" '+I+'><label>Anon public / Publishable key</label><input id="ck" '+I+'><div class="err" id="er"></div><button style="width:100%" onclick="saveCfg()">Save and continue</button></div>';return}
- sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+ sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{global:{fetch:myFetch}});
  if(location.hash.split("&").includes("#signup")||location.hash=="#signup")scr="reg";
  sb.auth.onAuthStateChange((ev)=>{
   if(ev=="PASSWORD_RECOVERY"){if(!inReset){recovery=true;setTimeout(render,0)}}
@@ -282,7 +284,7 @@ async function addAccount(){
  if(!n||!em||!p){m.textContent="Fill the name, Gmail, and password.";return}
  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){m.textContent="Enter a valid Gmail, e.g. name@gmail.com";return}
  if(p.length<6){m.textContent="Password must be 6+ characters.";return}
- const tmp=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false,storageKey:"yk-tmp"}});
+ const tmp=supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{global:{fetch:myFetch},auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false,storageKey:"yk-tmp"}});
  const {data,error}=await tmp.auth.signUp({email:em,password:p,options:{data:{name:n}}});
  if(error){m.textContent=error.message;return}
  if(data.user&&data.user.identities&&data.user.identities.length==0){m.textContent="This Gmail is already registered.";return}
@@ -316,6 +318,9 @@ function note(html){
  o.innerHTML='<div class="mb"><div style="margin:0 0 14px">'+html+'</div><div style="text-align:right"><button id="mk">OK</button></div></div>';
  document.body.appendChild(o);$("#mk").onclick=()=>o.remove();
 }
-boot();
+function showNet(){document.body.classList.add("lg");document.body.classList.remove("db");
+ $("#app").innerHTML='<div class="card" style="max-width:420px;margin:8vh auto 0"><h1>Cannot reach the database</h1><p>Check that the Project URL is exactly the one in Supabase (https://xxxx.supabase.co), that your internet works, and that your Supabase project is not paused.</p><button style="width:100%" onclick="location.reload()">Try again</button><button class="g" style="width:100%;margin-top:8px" onclick="localStorage.removeItem(\'yk_cfg\');location.reload()">Change Supabase settings</button><p style="font-size:12px;color:var(--mut);margin-top:10px;word-break:break-all">Saved URL: '+esc(SUPABASE_URL)+'</p></div>'}
+window.addEventListener("unhandledrejection",e=>e.preventDefault());
+boot().catch(showNet);
 </script>
 </body></html>
